@@ -61,10 +61,9 @@ class ProductController extends Controller
             $product->images()->create(['image'=>'uploads/product_photos/'.$imageName]);
          }
 
-          $allSizes =  Size::all();
-         foreach ($allSizes as $size){
-            $product->sizes()->attach($size->id,['price'=>$validated['price']]);
-         }
+
+            $product->sizes()->attach($validated['size_id'],['price'=>$validated['price']]);
+
 
 
          foreach ($validated['question'] as $key => $ques) {
