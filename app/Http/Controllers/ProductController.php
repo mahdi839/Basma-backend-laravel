@@ -28,26 +28,26 @@ class ProductController extends Controller
     public function store(Request $request)
     {
 
-     $validated = $request->validate([
-
-            'title'=>'required',
-            'sub_title'=>'required',
-            'video_url'=>'nullable',
-            'description'=>'nullable',
-            'discount'=>'nullable',
-            'image'=>'required|array',
+        $validated = $request->validate([
+            'title' => 'required',
+            'sub_title' => 'required',
+            'video_url' => 'nullable',
+            'description' => 'nullable',
+            'discount' => 'nullable',
+            'image' => 'required|array', 
             'image.*' => 'image|mimes:jpg,jpeg,png',
-            'sizes'=>'nullable|array',
-            'size_id' => 'required',
-            'price'=>'required|numeric',
-            'question'=>'nullable|array',
-            'answer'=>'nullable|array',
-
-         ]);
+            'sizes' => 'nullable|array', 
+            'price'=> 'required_without:sizes',
+            'sizes.*.size_id' => 'required|exists:sizes,id', 
+            'sizes.*.price' => 'required|numeric', 
+            'question' => 'nullable|array',
+            'answer' => 'nullable|array',
+        ]);
 
          $product = Product::create([
              'title'=>$validated['title'],
              'sub_title'=>$validated['sub_title'],
+             'price' => $validated['price'] ?? null,
              'description'=>$validated['description']??null,
              'video_url'=>$validated['video_url']??null,
              'discount'=>$validated['discount']??null,
@@ -62,7 +62,14 @@ class ProductController extends Controller
          }
 
 
-            $product->sizes()->attach($validated['size_id'],['price'=>$validated['price']]);
+          // Handle size-based pricing if exists
+    if (!empty($validated['sizes'])) {
+        foreach ($validated['sizes'] as $size) {
+            $product->sizes()->attach($size['size_id'], [
+                'price' => $size['price']
+            ]);
+        }
+    }
 
 
 
