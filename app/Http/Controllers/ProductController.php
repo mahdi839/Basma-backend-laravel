@@ -14,7 +14,7 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $allProducts =  Product::with(['images','sizes'])->get();
+        $allProducts =  Product::with(['images','sizes','faqs'])->get();
 
         return response()->json([
             'message'=> 'success',
@@ -62,23 +62,25 @@ class ProductController extends Controller
          }
 
 
-          // Handle size-based pricing if exists
-    if (!empty($validated['sizes'])) {
-        foreach ($validated['sizes'] as $size) {
-            $product->sizes()->attach($size['size_id'], [
-                'price' => $size['price']
-            ]);
-        }
-    }
+                // Handle size-based pricing if exists
+            if (!empty($validated['sizes'])) {
+                foreach ($validated['sizes'] as $size) {
+                    $product->sizes()->attach($size['size_id'], [
+                        'price' => $size['price']
+                    ]);
+                }
+            }
 
 
 
-         foreach ($validated['question'] as $key => $ques) {
-            $product->faqs()->create([
-                'question' => $ques,
-                'answer' => $validated['answer'][$key] ?? null,
-            ]);
-        }
+            if (isset($validated['question'])) {
+                foreach ($validated['question'] as $key => $ques) {
+                    $product->faqs()->create([
+                        'question' => $ques,
+                        'answer' => $validated['answer'][$key] ?? null,
+                    ]);
+                }
+            }
 
 
 
