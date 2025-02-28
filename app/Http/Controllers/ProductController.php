@@ -108,29 +108,10 @@ class ProductController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        // $validated = $request->validate([
-
-        //     'title'=>'required',
-        //     'sub_title'=>'required',
-        //     'video_url'=>'nullable',
-        //     'description'=>'nullable',
-        //     'discount'=>'nullable',
-        //     'image'=>'nullable|array',
-        //     'image.*' => 'image|mimes:jpg,jpeg,png',
-        //     'sizes'=>'nullable|array',
-        //     'size_id' => 'nullable',
-        //     'price'=>'required|numeric',
-        //     'question'=>'nullable|array',
-        //     'answer'=>'nullable|array',
-
-        //  ]);
+        
 
          $product = Product::with(['images','sizes'])->find($id);
-        //  $product->name = $validated['title'];
-        //  $product->sub_title = $validated['sub_title'];
-        //  $product->video_url = $validated['video_url'];
-        //  $product->description = $validated['description'];
-        //  $product->discount = $validated['discount'];
+     
 
 
             foreach ( $product->images as $image_record){
