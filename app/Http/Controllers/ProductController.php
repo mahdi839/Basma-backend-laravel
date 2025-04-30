@@ -24,7 +24,7 @@ class ProductController extends Controller
 
     /**
      * Store a newly created resource in storage.
-     */
+     */ 
     public function store(Request $request)
     {
 
@@ -108,29 +108,82 @@ class ProductController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        
-
-         $product = Product::with(['images','sizes'])->find($id);
-     
-
-
-            foreach ( $product->images as $image_record){
-                if($request->hasFile('image')){
-
-                    if($image_record->image && base_path($image_record->image)){
-                        unlink(base_path($image_record->image));
-                        $image_record->image->delete();
+        $validated = $request->validate([
+            'title' => 'required',
+            'sub_title' => 'required',
+            'video_url' => 'nullable',
+            'description' => 'nullable',
+            'discount' => 'nullable',
+            'image' => 'nullable|array',
+            'image.*' => 'image|mimes:jpg,jpeg,png',
+            'deleted_images' => 'nullable|array', 
+            'deleted_images.*' => 'exists:images,id', 
+            'sizes' => 'nullable|array',
+            'sizes.*.size_id' => 'required|exists:sizes,id',
+            'sizes.*.price' => 'required|numeric',
+            'faqs' => 'nullable|array',
+            'faqs.*.question' => 'required',
+            'faqs.*.answer' => 'required',
+        ]);
+    
+        $product = Product::with(['images', 'sizes', 'faqs'])->findOrFail($id);
+    
+        // Update basic product info
+        $product->update([
+            'title' => $validated['title'],
+            'sub_title' => $validated['sub_title'],
+            'video_url' => $validated['video_url'],
+            'description' => $validated['description'],
+            'discount' => $validated['discount'],
+            'price' => $request->price ?? null, // Handle single price if applicable
+        ]);
+    
+         // Process image deletions using deleted_images
+        if (!empty($validated['deleted_images'])) {
+            foreach ($validated['deleted_images'] as $imageId) {
+                $image = $product->images()->find($imageId);
+                if ($image) {
+                    if (file_exists(public_path($image->image))) {
+                        unlink(public_path($image->image));
                     }
-
-                    $imageName = $request->file('image')->hashName();
-                    $destination = public_path('uploads/product_photos');
-                    $image_record->image->move($destination,$imageName);
+                    $image->delete();
+                }
             }
-            $imageName = $request->file('image')->hashName();
-            $product->images()->update([
-                 $image_record->image = 'uploads/product_photos/'.$imageName
-            ]);
         }
+    
+        // Process new image uploads
+        if ($request->hasFile('image')) {
+            foreach ($request->file('image') as $image) {
+                $imageName = $image->hashName();
+                $destination = public_path('uploads/product_photos');
+                $image->move($destination, $imageName);
+                $product->images()->create(['image' => 'uploads/product_photos/'.$imageName]);
+            }
+        }
+    
+        // Update sizes
+        $product->sizes()->detach(); // Remove existing sizes
+        if (!empty($validated['sizes'])) {
+            foreach ($validated['sizes'] as $size) {
+                $product->sizes()->attach($size['size_id'], ['price' => $size['price']]);
+            }
+        }
+    
+        // Update FAQs
+        $product->faqs()->delete(); // Remove existing FAQs
+        if (!empty($validated['faqs'])) {
+            foreach ($validated['faqs'] as $faq) {
+                $product->faqs()->create([
+                    'question' => $faq['question'],
+                    'answer' => $faq['answer'],
+                ]);
+            }
+        }
+    
+        return response()->json([
+            'message' => 'Product updated successfully',
+            'data' => $product->fresh()->load('images', 'sizes', 'faqs')
+        ]);
     }
 
     /**
