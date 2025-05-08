@@ -191,6 +191,24 @@ class ProductController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $product = Product::findOrFail($id);
+    
+    // Delete associated images files and database records
+    foreach ($product->images as $image) {
+        if (file_exists(public_path($image->image))) {
+            unlink(public_path($image->image));
+        }
+        $image->delete();
+    }
+    
+    $product->faqs()->delete();
+    $product->sizes()->detach();
+    // Delete the product itself
+    $product->delete();
+    
+    return response()->json([
+        'message' => 'Product deleted successfully'
+    ], 200);
+
     }
 }
