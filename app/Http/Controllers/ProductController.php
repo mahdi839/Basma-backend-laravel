@@ -199,7 +199,7 @@ class ProductController extends Controller
             unlink(public_path($image->image));
         }
         $image->delete();
-    }
+    
     
     $product->faqs()->delete();
     $product->sizes()->detach();
@@ -211,4 +211,5 @@ class ProductController extends Controller
     ], 200);
 
     }
+}
 }
