@@ -96,7 +96,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['images','sizes'])->findOrFail($id);
+        $product = Product::with(['images','sizes','faqs'])->findOrFail($id);
         return response()->json([
             'message' => 'success',
             'data'=>$product

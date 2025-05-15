@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SizeController;
+use App\Http\Controllers\Api\CategoryController;
+
 
 
 Route::post('signUp',[AuthController::class,'signUp']);
@@ -18,7 +20,7 @@ Route::apiResource('products', ProductController::class)
 
 Route::apiResource('sizes', SizeController::class)
     ->only(['index', 'show']);
-
+Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
 // Protected admin-only routes
 Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('products', ProductController::class)
@@ -26,6 +28,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
         
     Route::apiResource('sizes', SizeController::class)
         ->only(['store', 'update', 'destroy']);
+        Route::apiResource('categories', CategoryController::class)->only(['store', 'update', 'destroy']);
 });
 
 
