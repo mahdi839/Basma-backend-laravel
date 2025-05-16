@@ -21,4 +21,8 @@ class Product extends Model
     public function faqs (){
         return $this->hasMany(productFaq::class);
     }
+
+    public function category (){
+        return $this->belongsToMany(Category::class);
+    }
 }
