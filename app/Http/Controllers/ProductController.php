@@ -36,7 +36,9 @@ class ProductController extends Controller
             'discount' => 'nullable',
             'image' => 'required|array', 
             'image.*' => 'image|mimes:jpg,jpeg,png',
-            'sizes' => 'nullable|array', 
+            'sizes' => 'nullable|array',
+            'categories'=> 'nullable|array',
+            'categories.*.category_id'=>'required|exists:categories,id', 
             'price'=> 'required_without:sizes',
             'sizes.*.size_id' => 'required|exists:sizes,id', 
             'sizes.*.price' => 'required|numeric', 
@@ -71,6 +73,13 @@ class ProductController extends Controller
                 }
             }
 
+            // insert categories
+            if(!empty($validated['categories'])){
+                foreach($validated['categories'] as $category){
+                    $product->category()->attach($category['category_id']);
+                }
+            }
+
 
 
             if (isset($validated['question'])) {
@@ -86,7 +95,7 @@ class ProductController extends Controller
 
          return response()->json([
              'message'=> 'product created successfully',
-             'data'=>$product->load('images','sizes','faqs')
+             'data'=>$product->load('images','sizes','faqs','category')
          ]);
 
     }
