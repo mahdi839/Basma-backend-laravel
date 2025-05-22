@@ -212,6 +212,7 @@ class ProductController extends Controller
     
     $product->faqs()->delete();
     $product->sizes()->detach();
+    $product->category->detach();
     // Delete the product itself
     $product->delete();
     
