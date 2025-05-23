@@ -105,7 +105,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['images','sizes','faqs'])->findOrFail($id);
+        $product = Product::with(['images','sizes','faqs','category'])->findOrFail($id);
         return response()->json([
             'message' => 'success',
             'data'=>$product
@@ -127,6 +127,8 @@ class ProductController extends Controller
             'image.*' => 'image|mimes:jpg,jpeg,png',
             'deleted_images' => 'nullable|array', 
             'deleted_images.*' => 'exists:images,id', 
+            'categories'=> 'nullable|array',
+            'categories.*.category_id'=>'required|exists:categories,id', 
             'sizes' => 'nullable|array',
             'sizes.*.size_id' => 'required|exists:sizes,id',
             'sizes.*.price' => 'required|numeric',
@@ -176,6 +178,12 @@ class ProductController extends Controller
             foreach ($validated['sizes'] as $size) {
                 $product->sizes()->attach($size['size_id'], ['price' => $size['price']]);
             }
+        }
+
+         // update categories
+         if (!empty($validated['categories'])) {
+            $categoryIds = array_column($validated['categories'], 'category_id');
+            $product->category()->sync($categoryIds);
         }
     
         // Update FAQs
