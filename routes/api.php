@@ -5,7 +5,7 @@ use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\Api\CategoryController;
-
+use App\Http\Controllers\ShippingCostController;
 
 
 Route::post('signUp', [AuthController::class, 'signUp']);
@@ -27,4 +27,5 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('sizes', SizeController::class)
         ->only(['store', 'update', 'destroy']);
     Route::apiResource('categories', CategoryController::class)->only(['store', 'update', 'destroy']);
+    Route::resource('shipping-costs', ShippingCostController::class);
 });
