@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('shipping_costs', function (Blueprint $table) {
             $table->id();
-            $table->integer('inside_dhaka');
-            $table->integer('outside_dhaka');
+            $table->integer('inside_dhaka')->nullable();
+            $table->integer('outside_dhaka')->nullable();
+            $table->integer('one_shipping_cost')->nullable();
             $table->timestamps();
         });
     }

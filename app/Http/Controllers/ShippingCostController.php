@@ -30,8 +30,9 @@ class ShippingCostController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'inside_dhaka' => 'required|numeric',
-            'outside_dhaka' => 'required|numeric',
+            'inside_dhaka' => 'nullable|numeric',
+            'outside_dhaka' => 'nullable|numeric',
+            'one_shipping_cost' => 'nullable|numeric',
         ]);
 
         $data =  ShippingCost::create($request->all());
@@ -41,10 +42,12 @@ class ShippingCostController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(ShippingCost $shippingCost)
+    public function latest()
     {
-        //
+        $shippingCost = ShippingCost::latest()->first();
+        return response()->json($shippingCost, 200);
     }
+    
 
     /**
      * Show the form for editing the specified resource.
@@ -60,8 +63,9 @@ class ShippingCostController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'inside_dhaka' => 'required|numeric',
-            'outside_dhaka' => 'required|numeric',
+            'inside_dhaka' => 'nullable|numeric',
+            'outside_dhaka' => 'nullable|numeric',
+            'one_shipping_cost' => 'nullable|numeric',
         ]);
        $shippingCost = ShippingCost::findOrFail($id);
         $shippingCost->update($request->all());
