@@ -42,6 +42,11 @@ class ShippingCostController extends Controller
     /**
      * Display the specified resource.
      */
+    public function show($id)
+    {
+        $shippingCost = ShippingCost::findOrFail($id);
+        return response()->json($shippingCost, 200);
+    }
     public function latest()
     {
         $shippingCost = ShippingCost::latest()->first();
