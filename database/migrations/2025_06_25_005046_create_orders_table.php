@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->string('order_number')->unique(); // e.g., ORD-20250625-001
+            $table->foreignId('user_id')->nullable()->constrained();
             $table->string('name');
             $table->string('phone');
             $table->text('address');
@@ -22,7 +23,7 @@ return new class extends Migration
             $table->integer('subtotal');
             $table->integer('total');
             $table->string('payment_method');
-            $table->longText('delivery_notes');
+            $table->longText('delivery_notes')->nullable();
             $table->string('status')->default('pending'); // e.g., pending, paid, shipped
             $table->timestamps();
         });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -35,8 +36,8 @@ class OrderController extends Controller
             'phone' => 'nullable|string',
             'shipping_cost' => 'required|numeric',
             'district' => 'required|string',
-            'address'=>'required|text',
-            'delivery_notes'=>'nullable|text',
+            'address'=>'required|string',
+            'delivery_notes'=>'nullable|string',
             'payment_method' => 'required|string',
             'cart' => 'required|array',
             'cart.*.id' => 'required|integer',
@@ -50,16 +51,16 @@ class OrderController extends Controller
         // Calculate totals
         $subtotal = collect($request->cart)->sum('totalPrice');
         $total = $subtotal - $request->shipping_cost; // Add shipping/tax if needed
+
+       
     
         // Create order
         $order = Order::create([
             'order_number' => 'ORD-' . date('Ymd') . '-' . strtoupper(uniqid()),
             'name' => $request->name,
-            'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
             'district' => $request->district,
-            'city' => $request->delivery_notes,
             'subtotal' => $subtotal,
             'total' => $total,
             'status'=> 'placed',
@@ -71,11 +72,11 @@ class OrderController extends Controller
             OrderItem::create([
                 'order_id' => $order->id,
                 'product_id'=>$item['id'],
-                'product_title' => $item['title'],
+                'title' => $item['title'],
                 'size' => $item['size'],
-                'unit_price' => $item['unitPrice'],
-                'quantity' => $item['qty'],
-                'total_price' => $item['totalPrice'],
+                'unitPrice' => $item['unitPrice'],
+                'qty' => $item['qty'],
+                'totalPrice' => $item['totalPrice'],
             ]);
         }
     
