@@ -14,7 +14,8 @@ class OrderController extends Controller
      */
     public function index()
     {
-        //
+        $orders = Order::with('orderItems')->paginate(10);
+        return response()->json($orders);
     }
 
     /**
@@ -63,6 +64,8 @@ class OrderController extends Controller
             'district' => $request->district,
             'subtotal' => $subtotal,
             'total' => $total,
+            'shipping_cost'=>$request->shipping_cost,
+            'delivery_notes'=>$request->delivery_notes,
             'status'=> 'placed',
             'payment_method' => $request->payment_method,
         ]);
