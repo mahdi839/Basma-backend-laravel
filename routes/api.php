@@ -31,6 +31,6 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('categories', CategoryController::class)->only(['store', 'update', 'destroy']);
     Route::apiResource('shipping-costs', ShippingCostController::class);
     Route::get('shipping-costs-latest', [ShippingCostController::class, 'latest']);
-   
+    Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
 });
-Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
+
