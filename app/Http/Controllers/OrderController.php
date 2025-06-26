@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -12,9 +11,49 @@ class OrderController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with('orderItems')->paginate(10);
+        $status = $request->query('status','');
+        $district = $request->query('district','');
+        $search = $request->input('search','');
+        $min = $request->query('min','');
+        $max = $request->query('max','');
+        $start_date = $request->query('start_date','');
+        $end_date = $request->query('end_date','');
+        $product_title = $request->query('product_title','');
+
+
+        $orders = Order::with('orderItems')
+        ->when($status,function($q)use($status){
+            $q->where('status',$status);
+         })
+        ->when($district,function($q)use($district){
+           $q->where('district',$district);
+        })
+        ->when($min, function ($q) use ($min) {
+            $q->where('total', '>=', $min);
+        })
+        ->when($max, function ($q) use ($max) {
+            $q->where('total', '<=', $max);
+        })
+        ->when($start_date, function ($q) use ($start_date) {
+            $q->where('created_at', '>=', $start_date);
+        })
+        ->when($end_date, function ($q) use ($end_date) {
+            $q->where('created_at', '<=', $end_date);
+        })
+        ->when($product_title,function($q)use($product_title){
+            $q->whereHas('orderItems',function($query) use ($product_title){
+                $query->where('title',$product_title);
+            });
+        })
+        ->when($search, function ($q) use ($search) {
+            $q->where(function ($query) use ($search) {
+                $query->where('name', 'LIKE', "%$search%")
+                      ->orWhere('phone', 'LIKE', "%$search%");
+            });
+        })
+        ->paginate(10);
         return response()->json($orders);
     }
 
