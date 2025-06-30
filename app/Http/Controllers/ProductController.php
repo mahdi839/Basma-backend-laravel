@@ -12,9 +12,16 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $allProducts =  Product::with(['images','sizes','faqs','category'])->get();
+        $slug = $request->query('slug','');
+        $allProducts =  Product::with(['images','sizes','faqs','category'])
+        ->when($slug,function($q)use ($slug){
+            $q->whereHas('category',function($query) use ($slug){
+                $query->where('slug',$slug);
+            });
+        })
+        ->get();
        
         return response()->json([
             'message'=> 'success',
