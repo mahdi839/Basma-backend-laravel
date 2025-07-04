@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductsSlot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductsSlotController extends Controller
 {
@@ -13,7 +14,7 @@ class ProductsSlotController extends Controller
           'priority' => 'required',
           'product_id'=> 'nullable|prohibits:category_id|required_without:category_id',
           'category_id' =>'nullable|prohibits:product_id|required_without:product_id',
-          'limit' => 'nullable|required_if:category_id,!null'
+          'limit' => 'nullable|required_if:category_id,!' 
        ]);
 
        $slot = ProductsSlot::create([
@@ -52,16 +53,26 @@ class ProductsSlotController extends Controller
 
     }
 
+    public function edit($id){
+       $product_slot = ProductsSlot::with('slotDetails.product')->findOrFail($id);
+
+       return response()->json([
+          'data'=> $product_slot
+       ]);
+    } 
+
     public function update(Request $request,$id){
+
         $request->validate([
             'slot_name' => 'required',
             'priority' => 'required',
             'product_id'=> 'nullable|prohibits:category_id|required_without:category_id',
             'category_id' =>'nullable|prohibits:product_id|required_without:product_id',
-            'limit' => 'nullable|required_if:category_id,!null'
+            'limit' => 'nullable|required_if:category_id,!' 
          ]);
-
          $product_slot = ProductsSlot::with('slotDetails')->findOrFail($id);
+         DB::transaction(function()use($product_slot,$request){
+       
          $product_slot->update([
             'slot_name' => $request->slot_name,
             'priority' => $request->priority,
@@ -87,11 +98,24 @@ class ProductsSlotController extends Controller
               ]);
            }
          }
+         });
+          // Reload the updated relationship
+         $product_slot->load('slotDetails');
 
-         return response([
+         return response()->json([
             'message'=> 'Updated Successfully!',
-            'data'=> $product_slot->load('slotDetails')
+            'data'=> $product_slot
          ]);
    
+    }
+
+    public function destroy ($id){
+        $product_slot = ProductsSlot::findOrFail($id);
+        $product_slot->slotDetails()->delete();
+        $product_slot->delete();
+
+        return response()->json([
+            'message'=> 'Product Slot Deleted Successfully!'
+        ],200);
     }
 }
