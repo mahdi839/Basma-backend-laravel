@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProductsSlotController;
 use App\Http\Controllers\ShippingCostController;
 
 
@@ -31,6 +32,8 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('categories', CategoryController::class)->only(['store', 'update', 'destroy']);
     Route::apiResource('shipping-costs', ShippingCostController::class);
     Route::get('shipping-costs-latest', [ShippingCostController::class, 'latest']);
+    Route::apiResource('product-slots', ProductsSlotController::class);
+    Route::get('product-slots/edit/{id}', [ProductsSlotController::class, 'edit']);
    
 });
 Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
