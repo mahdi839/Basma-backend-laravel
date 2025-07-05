@@ -33,6 +33,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('shipping-costs', ShippingCostController::class);
     Route::get('shipping-costs-latest', [ShippingCostController::class, 'latest']);
     Route::apiResource('product-slots', ProductsSlotController::class);
+    Route::get('slots_products/create', [ProductsSlotController::class, 'create']);
     Route::get('product-slots/edit/{id}', [ProductsSlotController::class, 'edit']);
    
 });

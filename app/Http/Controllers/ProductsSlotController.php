@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\Product;
 use App\Models\ProductsSlot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +26,17 @@ class ProductsSlotController extends Controller
       return response()->json($product_slot);
    }
 
+   public function create(){
+      $products = Product::select(['id','title'])->get();
+      $categories = Category::select(['id','name'])->get();
+      return response()->json([
+         'data' => [
+            'products' => $products,
+            'categories' => $categories
+          ]
+      ]);
+   }
+
     public function store(Request $request){
        $request->validate([
           'slot_name' => 'required',
@@ -31,6 +44,15 @@ class ProductsSlotController extends Controller
           'product_id'=> 'nullable|prohibits:category_id|required_without:category_id',
           'category_id' =>'nullable|prohibits:product_id|required_without:product_id',
           'limit' => 'nullable|required_if:category_id,!' 
+       ],
+       [
+           'slot_name.required' => 'Please provide a slot name.',
+           'priority.required' => 'Priority is required.',
+           'product_id.prohibits' => 'You cannot select both a product and a category.',
+           'product_id.required_without' => 'Product name is required if no category is selected.',
+           'category_id.prohibits' => 'You cannot select both a category and a product.',
+           'category_id.required_without' => 'Category  is required if no product is selected.',
+           'limit.required_if' => 'Limit is required when a category is selected.'
        ]);
 
        $slot = ProductsSlot::create([
