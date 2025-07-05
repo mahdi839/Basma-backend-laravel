@@ -8,6 +8,22 @@ use Illuminate\Support\Facades\DB;
 
 class ProductsSlotController extends Controller
 {
+   
+   public function index (){
+
+       $product_slot = ProductsSlot::with(['slotDetails',
+       'slotDetails.product'=>function($q){
+         $q->select('id','product_title');
+       },
+       'slotDetails.category'=>function($q){
+         $q->select('id','name');
+       }
+      
+      ])->paginate(20);
+
+      return response()->json($product_slot);
+   }
+
     public function store(Request $request){
        $request->validate([
           'slot_name' => 'required',

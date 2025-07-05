@@ -88,7 +88,6 @@ class ProductController extends Controller
             }
 
 
-
             if (isset($validated['question'])) {
                 foreach ($validated['question'] as $key => $ques) {
                     $product->faqs()->create([
