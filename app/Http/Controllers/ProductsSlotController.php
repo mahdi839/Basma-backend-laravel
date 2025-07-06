@@ -15,16 +15,15 @@ class ProductsSlotController extends Controller
 
        $product_slot = ProductsSlot::with(['slotDetails',
        'slotDetails.product'=>function($q){
-         $q->select('id','product_title');
+         $q->select('id','title');
        },
        'slotDetails.category'=>function($q){
          $q->select('id','name');
        }
       
       ])->paginate(20);
-
       return response()->json($product_slot);
-   }
+   } 
 
    public function create(){
       $products = Product::select(['id','title'])->get();
@@ -41,16 +40,14 @@ class ProductsSlotController extends Controller
        $request->validate([
           'slot_name' => 'required',
           'priority' => 'required',
-          'product_id'=> 'nullable|prohibits:category_id|required_without:category_id',
-          'category_id' =>'nullable|prohibits:product_id|required_without:product_id',
+          'product_id'=> 'nullable|required_without:category_id',
+          'category_id' =>'nullable|required_without:product_id',
           'limit' => 'nullable|required_if:category_id,!' 
        ],
        [
            'slot_name.required' => 'Please provide a slot name.',
            'priority.required' => 'Priority is required.',
-           'product_id.prohibits' => 'You cannot select both a product and a category.',
            'product_id.required_without' => 'Product name is required if no category is selected.',
-           'category_id.prohibits' => 'You cannot select both a category and a product.',
            'category_id.required_without' => 'Category  is required if no product is selected.',
            'limit.required_if' => 'Limit is required when a category is selected.'
        ]);
