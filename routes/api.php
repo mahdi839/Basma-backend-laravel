@@ -4,7 +4,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SizeController;
-use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\API\CategoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductsSlotController;
 use App\Http\Controllers\ShippingCostController;
