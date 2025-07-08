@@ -21,7 +21,7 @@ class ProductsSlotController extends Controller
          $q->select('id','name');
        }
       
-      ])->paginate(20);
+      ])->paginate(10);
       return response()->json($product_slot);
    } 
 
@@ -89,7 +89,9 @@ class ProductsSlotController extends Controller
     }
 
     public function edit($id){
-       $product_slot = ProductsSlot::with('slotDetails.product')->findOrFail($id);
+       $product_slot = ProductsSlot::with(['slotDetails.product','slotDetails.category'=>function($q){
+         $q->select('id','name');
+       }])->findOrFail($id);
 
        return response()->json([
           'data'=> $product_slot
