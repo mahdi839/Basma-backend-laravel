@@ -41,8 +41,9 @@ class ProductsSlotController extends Controller
           'slot_name' => 'required',
           'priority' => 'required',
           'product_id'=> 'nullable|required_without:category_id',
-          'category_id' =>'nullable|required_without:product_id',
-          'limit' => 'nullable|required_if:category_id,!' 
+           'categories' => 'nullable|array',
+         'categories.*.id' => 'required_with:categories|integer',
+         'categories.*.limit' => 'required_with:categories|integer|min:1',
        ],
        [
            'slot_name.required' => 'Please provide a slot name.',
@@ -67,15 +68,15 @@ class ProductsSlotController extends Controller
          }
        }
 
-       if($request->filled('category_id')){
-        foreach($request->category_id as $categoryId){
-           $slot->slotDetails()->create([
-               'category_id'=>$categoryId,
-               'product_id'=>null,
-               'limit'=> $request->limit
-           ]);
-        }
-      }
+      if($request->filled('categories')){
+         foreach($request->categories as $cat){
+            $slot->slotDetails()->create([
+               'category_id' => $cat['id'],
+               'product_id' => null,
+               'limit' => $cat['limit'],
+            ]);
+         }
+         }
 
         
         $slot->load('slotDetails');
@@ -104,8 +105,9 @@ class ProductsSlotController extends Controller
             'slot_name' => 'required',
             'priority' => 'required',
             'product_id'=> 'nullable|required_without:category_id',
-            'category_id' =>'nullable|required_without:product_id',
-            'limit' => 'nullable|required_if:category_id,!' 
+             'categories' => 'nullable|array',
+            'categories.*.id' => 'required_with:categories|integer',
+            'categories.*.limit' => 'required_with:categories|integer|min:1',
         ],
       [
            'slot_name.required' => 'Please provide a slot name.',
@@ -133,15 +135,16 @@ class ProductsSlotController extends Controller
             }
           }
    
-          if($request->filled('category_id')){
-           foreach($request->category_id as $categoryId){
-              $product_slot->slotDetails()->create([
-                  'category_id'=>$categoryId,
-                  'product_id'=>null,
-                  'limit'=> $request->limit
-              ]);
-           }
+        if($request->filled('categories')){
+         foreach($request->categories as $cat){
+            $product_slot->slotDetails()->create([
+               'category_id' => $cat['id'],
+               'product_id' => null,
+               'limit' => $cat['limit'],
+            ]);
          }
+         }
+
          });
           // Reload the updated relationship
          $product_slot->load('slotDetails');
