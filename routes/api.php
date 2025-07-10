@@ -35,6 +35,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('product-slots', ProductsSlotController::class);
     Route::get('slots_products/create', [ProductsSlotController::class, 'create']);
     Route::get('product-slots/edit/{id}', [ProductsSlotController::class, 'edit']);
-   
+    Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
+    
 });
-Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
+Route::get('product-slots_index/frontEndIndex', [ProductsSlotController::class, 'frontEndIndex']);

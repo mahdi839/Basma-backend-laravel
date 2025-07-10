@@ -10,7 +10,15 @@ use Illuminate\Support\Facades\DB;
 
 class ProductsSlotController extends Controller
 {
-   
+   public function frontEndIndex (){
+      $product_slot = ProductsSlot::with(['slotDetails',
+      'slotDetails.product',
+      'slotDetails.category.products'
+      
+     ])->get();
+     return $product_slot;
+     return response()->json($product_slot);
+   }
    public function index (){
 
        $product_slot = ProductsSlot::with(['slotDetails',
@@ -102,7 +110,7 @@ class ProductsSlotController extends Controller
         $request->validate([
             'slot_name' => 'required',
             'priority' => 'required',
-            'product_id'=> 'nullable|required_without:category_id',
+            'product_id'=> 'nullable|required_without:categories',
              'categories' => 'nullable|array',
             'categories.*.category_id' => 'required_with:categories|integer',
             'categories.*.limit' => 'required_with:categories|integer|min:1',
