@@ -14,7 +14,8 @@ Route::post('signUp', [AuthController::class, 'signUp']);
 Route::post('logIn', [AuthController::class, 'logIn']);
 Route::post('logOut', [AuthController::class, 'logOut'])->middleware('auth:sanctum');
 
-// Public routes (no auth needed)
+
+
 Route::apiResource('products', ProductController::class)
     ->only(['index', 'show']);
 
@@ -22,6 +23,7 @@ Route::apiResource('sizes', SizeController::class)
     ->only(['index', 'show']);
 Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
 Route::apiResource('orders', OrderController::class)->only(['store']);
+Route::get('product-slots_index/frontEndIndex', [ProductsSlotController::class, 'frontEndIndex']);
 // Protected admin-only routes
 Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('products', ProductController::class)
@@ -38,4 +40,4 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
     
 });
-Route::get('product-slots_index/frontEndIndex', [ProductsSlotController::class, 'frontEndIndex']);
+

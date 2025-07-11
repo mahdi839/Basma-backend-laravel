@@ -13,10 +13,19 @@ class ProductsSlotController extends Controller
    public function frontEndIndex (){
       $product_slot = ProductsSlot::with(['slotDetails',
       'slotDetails.product',
-      'slotDetails.category.products'
+      'slotDetails.category'
       
      ])->get();
-     return $product_slot;
+     foreach ($product_slot as $slot){
+      foreach($slot->slotDetails as $slotDetail){
+         if($slotDetail->category && $slotDetail->limit){
+            $slotDetail->category->load([
+               'products'=>fn($q)=> $q->limit($slotDetail->limit)
+            ]);
+         }
+      }
+    }
+     
      return response()->json($product_slot);
    }
    public function index (){
