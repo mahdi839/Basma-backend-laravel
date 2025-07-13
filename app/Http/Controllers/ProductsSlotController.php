@@ -11,15 +11,17 @@ use Illuminate\Support\Facades\DB;
 class ProductsSlotController extends Controller
 {
    public function frontEndIndex (){
-     $all_products = [];
+     
      $product_slot = ProductsSlot::with([
     'slotDetails',
     'slotDetails.product.images',
     'slotDetails.product.sizes',
-   ])->get();
+   ])
+   ->orderBy('priority')
+   ->get();
    
 
-  return $all_products;
+ 
      return response()->json($product_slot);
    }
 
