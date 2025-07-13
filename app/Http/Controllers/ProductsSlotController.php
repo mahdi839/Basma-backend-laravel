@@ -11,44 +11,34 @@ use Illuminate\Support\Facades\DB;
 class ProductsSlotController extends Controller
 {
    public function frontEndIndex (){
-      $product_slot = ProductsSlot::with(['slotDetails',
-      'slotDetails.product',
-      'slotDetails.category'
-      
-     ])->get();
-     foreach ($product_slot as $slot){
-      foreach($slot->slotDetails as $slotDetail){
-         if($slotDetail->category && $slotDetail->limit){
-            $slotDetail->category->load([
-               'products'=>fn($q)=> $q->limit($slotDetail->limit)
-            ]);
-         }
-      }
-    }
-     
+     $all_products = [];
+     $product_slot = ProductsSlot::with([
+    'slotDetails',
+    'slotDetails.product.images',
+    'slotDetails.product.sizes',
+   ])->get();
+   
+
+  return $all_products;
      return response()->json($product_slot);
    }
+
    public function index (){
 
        $product_slot = ProductsSlot::with(['slotDetails',
        'slotDetails.product'=>function($q){
          $q->select('id','title');
-       },
-       'slotDetails.category'=>function($q){
-         $q->select('id','name');
        }
-      
       ])->paginate(10);
       return response()->json($product_slot);
    } 
 
    public function create(){
       $products = Product::select(['id','title'])->get();
-      $categories = Category::select(['id','name'])->get();
+    
       return response()->json([
          'data' => [
             'products' => $products,
-            'categories' => $categories
           ]
       ]);
    }
@@ -57,15 +47,12 @@ class ProductsSlotController extends Controller
        $request->validate([
           'slot_name' => 'required',
           'priority' => 'required',
-          'product_id'=> 'nullable|required_without:categories',
-           'categories' => 'nullable|array',
-           'categories.*.category_id' => 'required_with:categories|integer',
-           'categories.*.limit' => 'required_with:categories|integer|min:1',
+          'product_id'=> 'required',
        ],
        [
            'slot_name.required' => 'Please provide a slot name.',
            'priority.required' => 'Priority is required.',
-           'product_id.required_without' => 'Product name is required if no category is selected.',
+           'product_id.required' => 'Product name is required ',
        ]);
 
        $slot = ProductsSlot::create([
@@ -77,21 +64,11 @@ class ProductsSlotController extends Controller
          foreach($request->product_id as $productId){
             $slot->slotDetails()->create([
                 'product_id'=>$productId,
-                'category_id'=>null,
-                'limit'=>null
             ]);
          }
        }
 
-      if($request->filled('categories')){
-         foreach($request->categories as $cat){
-            $slot->slotDetails()->create([
-               'category_id' => $cat['category_id'],
-               'product_id' => null,
-               'limit' => $cat['limit'],
-            ]);
-         }
-         }
+     
 
         
         $slot->load('slotDetails');
@@ -105,10 +82,7 @@ class ProductsSlotController extends Controller
     }
 
     public function edit($id){
-       $product_slot = ProductsSlot::with(['slotDetails.product','slotDetails.category'=>function($q){
-         $q->select('id','name');
-       }])->findOrFail($id);
-
+       $product_slot = ProductsSlot::with('slotDetails.product')->findOrFail($id);
        return response()->json([
           'data'=> $product_slot
        ]);
@@ -119,19 +93,12 @@ class ProductsSlotController extends Controller
         $request->validate([
             'slot_name' => 'required',
             'priority' => 'required',
-            'product_id'=> 'nullable|required_without:categories',
-             'categories' => 'nullable|array',
-            'categories.*.category_id' => 'required_with:categories|integer',
-            'categories.*.limit' => 'required_with:categories|integer|min:1',
+            'product_id'=> 'required',
         ],
       [
            'slot_name.required' => 'Please provide a slot name.',
            'priority.required' => 'Priority is required.',
-           'product_id.required_without' => 'Product name is required if no category is selected.',
-            // In update() method's messages array
-            'categories.*.category_id.required_with' => 'Category ID is required',
-            'categories.*.limit.required_with' => 'Limit is required for categories',
-           
+           'product_id.required' => 'Product name is required.',
        ]);
          $product_slot = ProductsSlot::with('slotDetails')->findOrFail($id);
          DB::transaction(function()use($product_slot,$request){
@@ -146,21 +113,9 @@ class ProductsSlotController extends Controller
             foreach($request->product_id as $productId){
                $product_slot->slotDetails()->create([
                    'product_id'=>$productId,
-                   'category_id'=>null,
-                   'limit'=>null
                ]);
             }
           }
-   
-        if($request->filled('categories')){
-         foreach($request->categories as $cat){
-            $product_slot->slotDetails()->create([
-               'category_id' => $cat['category_id'],
-               'product_id' => null,
-               'limit' => $cat['limit'],
-            ]);
-         }
-         }
 
          });
           // Reload the updated relationship

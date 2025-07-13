@@ -15,8 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('slot_id')->constrained('products_slots')->cascadeOnDelete();
             $table->foreignId('product_id')->nullable()->constrained('products')->nullOnDelete();
-            $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
-            $table->integer('limit')->nullable();
             $table->timestamps();
         });
     }
