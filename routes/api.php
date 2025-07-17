@@ -5,6 +5,7 @@ use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\API\CategoryController;
+use App\Http\Controllers\BannerController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductsSlotController;
 use App\Http\Controllers\ShippingCostController;
@@ -18,7 +19,7 @@ Route::post('logOut', [AuthController::class, 'logOut'])->middleware('auth:sanct
 
 Route::apiResource('products', ProductController::class)
     ->only(['index', 'show']);
-
+Route::apiResource('banners', BannerController::class)->only(['index', 'show']);
 Route::apiResource('sizes', SizeController::class)
     ->only(['index', 'show']);
 Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
@@ -38,6 +39,6 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::get('slots_products/create', [ProductsSlotController::class, 'create']);
     Route::get('product-slots/edit/{id}', [ProductsSlotController::class, 'edit']);
     Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
-    
+    Route::apiResource('banners', BannerController::class)->only(['store', 'update', 'destroy']);
 });
 

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('banner_images', function (Blueprint $table) {
             $table->id();
             $table->foreignId('banner_id')->constrained()->cascadeOnDelete();
-            $table->string('url');
+            $table->string('path');
             $table->timestamps();
         });
     }
