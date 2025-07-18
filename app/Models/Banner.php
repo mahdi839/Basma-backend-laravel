@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Banner extends Model
 {
     protected $fillable = [
-        'path',
+        'link',
         'type',
         'category_id'
     ];
@@ -17,6 +17,6 @@ class Banner extends Model
     }
 
     public function category(){
-        return  $this->blongsTo(Category::class);
+        return  $this->belongsTo(Category::class);
     }
 }
