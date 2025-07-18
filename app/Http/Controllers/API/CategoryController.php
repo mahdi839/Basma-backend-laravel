@@ -10,7 +10,8 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        return response()->json(Category::all());
+        $categories = Category::paginate(20);
+        return response()->json($categories);
     }
 
     public function store(Request $request)

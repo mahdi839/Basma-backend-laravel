@@ -26,10 +26,15 @@ class BannerController extends Controller
         $request->validate([
             'link' => 'nullable',
             'type' => 'required',
-            'category_id' => 'nullable|exists:categories,id',
+            'category_id' => 'required_if:type,category|exists:categories,id',
             'images' => 'required|array',
             'images.*' => 'required|image|mimes:jpg,jpeg,png,gif'
-        ]);
+        ],
+        [
+            'category_id.required_if' => 'Category Field Is Required'
+        ]
+    
+    );
 
         $banner = DB::transaction(function () use ($request) {
             $banner =  Banner::create([
