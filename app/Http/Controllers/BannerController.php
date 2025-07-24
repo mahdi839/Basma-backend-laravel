@@ -14,7 +14,7 @@ class BannerController extends Controller
      */
     public function index()
     {
-        $bannersData = Banner::with('images')->paginate(20);
+        $bannersData = Banner::with('banner_mages')->paginate(20);
         return response()->json($bannersData);
     }
 
@@ -27,11 +27,13 @@ class BannerController extends Controller
             'link' => 'nullable',
             'type' => 'required',
             'category_id' => 'required_if:type,category|exists:categories,id',
+            'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
             'images' => 'required|array',
             'images.*' => 'required|image|mimes:jpg,jpeg,png,gif'
         ],
         [
-            'category_id.required_if' => 'Category Field Is Required'
+            'category_id.required_if' => 'Category Field Is Required',
+             'products_slots_id.required_if' => 'Slot Field Is Required'
         ]
     
     );
@@ -41,12 +43,13 @@ class BannerController extends Controller
                 'link' => $request->link,
                 'type' => $request->type,
                 'category_id' => $request->category_id,
+                'products_slots_id' => $request->products_slots_id,
             ]);
 
             foreach ($request->images as $image) {
 
                 $path_name = $image->store('banner/images', 'public');
-                $banner->images()->create([
+                $banner->banner_mages()->create([
                     'path' => $path_name
                 ]);
             }
@@ -73,7 +76,8 @@ class BannerController extends Controller
         $request->validate([
             'link' => 'nullable',
             'type' => 'required|in:hero,slot,category',
-            'category_id' => 'nullable|exists:categories,id',
+            'category_id' => 'required_if:type,category|exists:categories,id',
+            'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
             'images' => 'required|array',
             'images.*' => 'required|image|mimes:jpg,jpeg,png,gif',
             'delete_images' => 'sometimes|array',
@@ -85,10 +89,11 @@ class BannerController extends Controller
                 'link' => $request->link,
                 'type' => $request->type,
                 'category_id' => $request->category_id,
+                'products_slots_id' => $request->products_slots_id,
             ]);
 
             if ($request->has('delete_images')) {
-                $imagesToDelete =  $banner->images()->whereIn('id', $request->delete_images)->get();
+                $imagesToDelete =  $banner->banner_mages()->whereIn('id', $request->delete_images)->get();
                 foreach ($imagesToDelete as $image) {
                     Storage::disk('public')->delete($image->path);
                     $image->delete();
@@ -98,13 +103,13 @@ class BannerController extends Controller
             if ($request->has('images')) {
                 foreach ($request->images as $img) {
                     $path_name = $img->store('banner/images', 'public');
-                    $banner->images()->create([
+                    $banner->banner_mages()->create([
                         'path' => $path_name
                     ]);
                 }
             }
 
-            return $banner->load('images');
+            return $banner->load('banner_mages');
         });
 
         return response()->json($banner);
@@ -117,10 +122,10 @@ class BannerController extends Controller
     {
         DB::transaction(function() use ($banner){
            
-            foreach($banner->images as $image){
+            foreach($banner->banner_mages as $image){
                 Storage::disk('public')->delete($image->path);
             }
-            $banner->images()->delete();
+            $banner->banner_mages()->delete();
             $banner->delete();
         });
        

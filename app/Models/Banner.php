@@ -9,10 +9,11 @@ class Banner extends Model
     protected $fillable = [
         'link',
         'type',
-        'category_id'
+        'category_id',
+        'products_slots_id'
     ];
    
-    public function images(){
+    public function banner_mages(){
         return $this->hasMany(BannerImage::class);
     }
 
