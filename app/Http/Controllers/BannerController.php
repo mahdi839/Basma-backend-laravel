@@ -14,7 +14,7 @@ class BannerController extends Controller
      */
     public function index()
     {
-        $bannersData = Banner::with('banner_mages')->paginate(20);
+        $bannersData = Banner::with(['banner_images','category','slot'])->paginate(20);
         return response()->json($bannersData);
     }
 
@@ -49,7 +49,7 @@ class BannerController extends Controller
             foreach ($request->images as $image) {
 
                 $path_name = $image->store('banner/images', 'public');
-                $banner->banner_mages()->create([
+                $banner->banner_images()->create([
                     'path' => $path_name
                 ]);
             }
@@ -63,10 +63,12 @@ class BannerController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Banner $banner)
+    public function show($id)
     {
-        //
+        $banner = Banner::with('banner_images')->findOrFail($id);
+        return response()->json($banner);
     }
+    
 
     /**
      * Update the specified resource in storage.
@@ -93,7 +95,7 @@ class BannerController extends Controller
             ]);
 
             if ($request->has('delete_images')) {
-                $imagesToDelete =  $banner->banner_mages()->whereIn('id', $request->delete_images)->get();
+                $imagesToDelete =  $banner->banner_images()->whereIn('id', $request->delete_images)->get();
                 foreach ($imagesToDelete as $image) {
                     Storage::disk('public')->delete($image->path);
                     $image->delete();
@@ -103,13 +105,13 @@ class BannerController extends Controller
             if ($request->has('images')) {
                 foreach ($request->images as $img) {
                     $path_name = $img->store('banner/images', 'public');
-                    $banner->banner_mages()->create([
+                    $banner->banner_images()->create([
                         'path' => $path_name
                     ]);
                 }
             }
 
-            return $banner->load('banner_mages');
+            return $banner->load('banner_images');
         });
 
         return response()->json($banner);
@@ -122,10 +124,10 @@ class BannerController extends Controller
     {
         DB::transaction(function() use ($banner){
            
-            foreach($banner->banner_mages as $image){
+            foreach($banner->banner_images as $image){
                 Storage::disk('public')->delete($image->path);
             }
-            $banner->banner_mages()->delete();
+            $banner->banner_images()->delete();
             $banner->delete();
         });
        
