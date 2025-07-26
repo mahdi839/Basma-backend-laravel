@@ -65,7 +65,7 @@ class BannerController extends Controller
      */
     public function show($id)
     {
-        $banner = Banner::with('banner_images')->findOrFail($id);
+        $banner = Banner::with('banner_images','slot')->findOrFail($id);
         return response()->json($banner);
     }
     
