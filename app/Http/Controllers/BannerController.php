@@ -73,21 +73,24 @@ class BannerController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Banner $banner)
+    public function update(Request $request,  $id)
     {
+        \Log::debug('Validation Input:', $request->all());
         $request->validate([
-            'link' => 'nullable',
-            'type' => 'required|in:hero,slot,category',
-            'category_id' => 'required_if:type,category|exists:categories,id',
-            'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
-            'images' => 'required|array',
-            'images.*' => 'required|image|mimes:jpg,jpeg,png,gif',
-            'delete_images' => 'sometimes|array',
-            'delete_images.*' => 'exists:banner_images,id'
+        'link' => 'nullable',
+        'type' => 'required|in:hero,slot,category',
+        'category_id' => 'nullable|required_if:type,category|exists:categories,id',
+        'products_slots_id' => 'nullable|required_if:type,slot|exists:products_slots,id',
+        'images' => 'sometimes|array',
+        'images.*' => 'image|mimes:jpg,jpeg,png,gif',
+        'delete_images' => 'sometimes|array',
+        'delete_images.*' => 'exists:banner_images,id'
         ]);
+  \Log::debug('Validation Passed:', $validated);
+        $singleBanner = Banner::findOrFail($id);
 
-        $banner =  DB::transaction(function () use ($request, $banner) {
-            $banner->update([
+        $banner =  DB::transaction(function () use ($request, $singleBanner) {
+            $singleBanner->update([
                 'link' => $request->link,
                 'type' => $request->type,
                 'category_id' => $request->category_id,
@@ -95,7 +98,7 @@ class BannerController extends Controller
             ]);
 
             if ($request->has('delete_images')) {
-                $imagesToDelete =  $banner->banner_images()->whereIn('id', $request->delete_images)->get();
+                $imagesToDelete =  $singleBanner->banner_images()->whereIn('id', $request->delete_images)->get();
                 foreach ($imagesToDelete as $image) {
                     Storage::disk('public')->delete($image->path);
                     $image->delete();
@@ -105,13 +108,13 @@ class BannerController extends Controller
             if ($request->has('images')) {
                 foreach ($request->images as $img) {
                     $path_name = $img->store('banner/images', 'public');
-                    $banner->banner_images()->create([
+                    $singleBanner->banner_images()->create([
                         'path' => $path_name
                     ]);
                 }
             }
 
-            return $banner->load('banner_images');
+            return $singleBanner->load('banner_images');
         });
 
         return response()->json($banner);
