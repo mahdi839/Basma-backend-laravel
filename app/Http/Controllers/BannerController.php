@@ -23,13 +23,14 @@ class BannerController extends Controller
      */
     public function store(Request $request)
     {
+         return $request;
         $request->validate([
             'link' => 'nullable',
             'type' => 'required',
             'category_id' => 'required_if:type,category|exists:categories,id',
             'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
             'images' => 'required|array',
-            'images.*' => 'required|image|mimes:jpg,jpeg,png,gif'
+            'images.*' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048'
         ],
         [
             'category_id.required_if' => 'Category Field Is Required',
@@ -37,6 +38,9 @@ class BannerController extends Controller
         ]
     
     );
+
+   
+
 
         $banner = DB::transaction(function () use ($request) {
             $banner =  Banner::create([
@@ -46,15 +50,14 @@ class BannerController extends Controller
                 'products_slots_id' => $request->products_slots_id,
             ]);
 
-            foreach ($request->images as $image) {
-
+          foreach ($request->file('images') as $image) {
                 $path_name = $image->store('banner/images', 'public');
                 $banner->banner_images()->create([
                     'path' => $path_name
                 ]);
             }
 
-            return $banner;
+           return $banner->load('banner_images'); 
         });
 
         return response()->json($banner);
@@ -75,7 +78,7 @@ class BannerController extends Controller
      */
     public function update(Request $request,  $id)
     {
-        \Log::debug('Validation Input:', $request->all());
+      
         $request->validate([
         'link' => 'nullable',
         'type' => 'required|in:hero,slot,category',
@@ -86,7 +89,7 @@ class BannerController extends Controller
         'delete_images' => 'sometimes|array',
         'delete_images.*' => 'exists:banner_images,id'
         ]);
-  \Log::debug('Validation Passed:', $validated);
+
         $singleBanner = Banner::findOrFail($id);
 
         $banner =  DB::transaction(function () use ($request, $singleBanner) {
