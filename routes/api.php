@@ -10,7 +10,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductsSlotController;
 use App\Http\Controllers\ShippingCostController;
 use App\Http\Controllers\FooterSettingController;
-
+use App\Http\Controllers\SocialLinkController;
 Route::post('signUp', [AuthController::class, 'signUp']);
 Route::post('logIn', [AuthController::class, 'logIn']);
 Route::post('logOut', [AuthController::class, 'logOut'])->middleware('auth:sanctum');
@@ -41,5 +41,9 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
     Route::apiResource('banners', BannerController::class)->only(['store', 'update', 'destroy']);
     Route::apiResource('footer-settings', FooterSettingController::class);
+    Route::apiResource('social-links', SocialLinkController::class)->only([
+     'store', 'update'
+   ]);
+   Route::get('social-links-first',[SocialLinkController::class,'getFirst']);
 });
 
