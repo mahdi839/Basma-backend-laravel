@@ -10,7 +10,12 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::paginate(20);
+        $page = request()->get('page',1);
+        $cachKey = "categories_page_$page";
+
+        $categories = cache()->remember($cachKey,now()->addMinutes(10),function(){
+             return Category::paginate(20);
+        });
         return response()->json($categories);
     }
 
@@ -24,6 +29,8 @@ class CategoryController extends Controller
             'name' => $request->name,
             'slug' => Str::slug($request->name),
         ]);
+
+        cache()->forget("categories_page_1");
 
         return response()->json($category, 201);
     }
@@ -47,6 +54,8 @@ class CategoryController extends Controller
             'slug' => Str::slug($request->name),
         ]);
 
+        cache()->forget("categories_page_1");
+
         return response()->json($category);
     }
 
@@ -54,7 +63,7 @@ class CategoryController extends Controller
     {
         $category = Category::findOrFail($id);
         $category->delete();
-
+        cache()->forget("categories_page_1");
         return response()->json(['message' => 'Category deleted']);
     }
 }
