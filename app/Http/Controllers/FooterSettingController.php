@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 class FooterSettingController extends Controller
 {
+    public function index(){
+        $data = FooterSetting::first();
+        return $data;
+    }
 
       public function show($id)
     {
@@ -57,5 +61,5 @@ public function update(Request $request, $id)
 
     $footer->update($validated);
     return response()->json($footer);
-}
+   }
 }

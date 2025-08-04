@@ -40,10 +40,11 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::get('product-slots/edit/{id}', [ProductsSlotController::class, 'edit']);
     Route::apiResource('orders', OrderController::class)->only(['index','update','destroy','show']);
     Route::apiResource('banners', BannerController::class)->only(['store', 'update', 'destroy']);
-    Route::apiResource('footer-settings', FooterSettingController::class);
+    
     Route::apiResource('social-links', SocialLinkController::class)->only([
      'store', 'update'
    ]);
    Route::get('social-links-first',[SocialLinkController::class,'getFirst']);
 });
+Route::apiResource('footer-settings', FooterSettingController::class);
 
