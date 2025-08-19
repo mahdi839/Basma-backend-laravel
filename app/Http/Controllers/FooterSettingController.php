@@ -18,7 +18,7 @@ class FooterSettingController extends Controller
         return response()->json($footer);
     }
     public function store(Request $request)
-{
+  {
     $validated = $request->validate([
         'logo_path' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         'company_description' => 'nullable|string',
@@ -35,7 +35,7 @@ class FooterSettingController extends Controller
 
     $footer = FooterSetting::create($validated);
     return response()->json($footer, 201);
-}
+ }
 
 public function update(Request $request, $id)
 {

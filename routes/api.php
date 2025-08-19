@@ -44,7 +44,8 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('social-links', SocialLinkController::class)->only([
      'store', 'update'
    ]);
-   Route::get('social-links-first',[SocialLinkController::class,'getFirst']);
+  
 });
+Route::get('social-links-first',[SocialLinkController::class,'getFirst']);
 Route::apiResource('footer-settings', FooterSettingController::class);
 
