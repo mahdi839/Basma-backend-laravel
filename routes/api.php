@@ -23,6 +23,7 @@ Route::apiResource('banners', BannerController::class)->only(['index', 'show']);
 Route::apiResource('sizes', SizeController::class)
     ->only(['index', 'show']);
 Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
+Route::get('frontend/categories', [CategoryController::class, 'frontEndIndex']);
 Route::apiResource('orders', OrderController::class)->only(['store']);
 Route::get('product-slots_index/frontEndIndex', [ProductsSlotController::class, 'frontEndIndex']);
 // Protected admin-only routes

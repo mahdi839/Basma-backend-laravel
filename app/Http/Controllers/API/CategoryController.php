@@ -19,6 +19,11 @@ class CategoryController extends Controller
         return response()->json($categories);
     }
 
+    public function frontEndIndex()
+    {
+        $categories = Category::all();
+        return response()->json($categories);
+    }
     public function store(Request $request)
     {
         $request->validate([
