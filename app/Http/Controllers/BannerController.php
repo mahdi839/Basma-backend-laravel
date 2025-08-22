@@ -29,7 +29,7 @@ class BannerController extends Controller
      */
     public function store(Request $request)
     {
-         return $request;
+        
         $request->validate([
             'link' => 'nullable',
             'type' => 'required',
