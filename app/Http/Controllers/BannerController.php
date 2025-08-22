@@ -18,6 +18,12 @@ class BannerController extends Controller
         return response()->json($bannersData);
     }
 
+    public function frontendIndex()
+    {
+        $bannersData = Banner::with(['banner_images','category','slot'])->get();
+        return response()->json($bannersData);
+    }
+
     /**
      * Store a newly created resource in storage.
      */

@@ -26,6 +26,7 @@ Route::apiResource('categories', CategoryController::class)->only(['index', 'sho
 Route::get('frontend/categories', [CategoryController::class, 'frontEndIndex']);
 Route::apiResource('orders', OrderController::class)->only(['store']);
 Route::get('product-slots_index/frontEndIndex', [ProductsSlotController::class, 'frontEndIndex']);
+Route::get('frontend/banner', [BannerController::class, 'frontEndIndex']);
 // Protected admin-only routes
 Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::apiResource('products', ProductController::class)
