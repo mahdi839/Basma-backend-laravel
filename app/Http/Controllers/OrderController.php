@@ -113,8 +113,8 @@ class OrderController extends Controller
             fputcsv($file, $columns);
 
             foreach ($orders as $order) {
-                $customer_info = "{$order->name}| {$order->phone}| {$order->district}";
-                $ordered_products = $order->orderItems->map(fn($item) => "{$item->title} ({$item->qty})")->implode("; ");
+                $customer_info = "Name: {$order->name}| Phone: {$order->phone}| District: {$order->district}";
+                $ordered_products = $order->orderItems->map(fn($item) => "Product Name: {$item->title} (Qty: {$item->qty})")->implode("; ");
                 $orderSummary = "Total: {$order->total}";
                 $status = $order->status;
                 fputcsv($file, [$customer_info, $ordered_products, $orderSummary, $status]);
