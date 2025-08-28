@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\FooterSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 class FooterSettingController extends Controller
 {
     public function index(){
-        $data = FooterSetting::first();
+        $data = Cache::remember('footer_settings',60*60, function(){
+           return FooterSetting::first();
+        });
         return $data;
     }
 
@@ -34,6 +37,7 @@ class FooterSettingController extends Controller
     }
 
     $footer = FooterSetting::create($validated);
+    Cache::forget('footer_settings');
     return response()->json($footer, 201);
  }
 
@@ -60,6 +64,7 @@ public function update(Request $request, $id)
     }
 
     $footer->update($validated);
+    Cache::forget('footer_settings');
     return response()->json($footer);
    }
 }

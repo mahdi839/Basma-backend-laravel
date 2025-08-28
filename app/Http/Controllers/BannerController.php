@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Banner;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -20,7 +21,11 @@ class BannerController extends Controller
 
     public function frontendIndex()
     {
-        $bannersData = Banner::with(['banner_images','category','slot'])->get();
+        $bannersData = Cache::remember('frontend_banners',60*60, function(){
+            return Banner::with(['banner_images:id,banner_id,path','category:id,name','slot:id,slot_name'])
+        ->select('id','link','type','category_id','products_slots_id')
+        ->get();
+        });
         return response()->json($bannersData);
     }
 
@@ -65,6 +70,8 @@ class BannerController extends Controller
 
            return $banner->load('banner_images'); 
         });
+
+        Cache::forget('frontend_banners');
 
         return response()->json($banner);
     }
@@ -122,7 +129,7 @@ class BannerController extends Controller
                     ]);
                 }
             }
-
+            Cache::forget('frontend_banners');
             return $singleBanner->load('banner_images');
         });
 
@@ -142,6 +149,8 @@ class BannerController extends Controller
             $banner->banner_images()->delete();
             $banner->delete();
         });
+
+        Cache::forget('frontend_banners');
        
         return response()->json([
             'message' => 'Successfully Deleted'
