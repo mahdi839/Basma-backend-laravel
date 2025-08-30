@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 
@@ -130,7 +131,13 @@ class OrderController extends Controller
      */
     public function create()
     {
-        //
+        $products = Product::with('sizes')->select(['id','title','price'])->get();
+    
+      return response()->json([
+         'data' => [
+            'products' => $products,
+          ]
+      ]);
     }
 
     /**
@@ -159,8 +166,6 @@ class OrderController extends Controller
         // Calculate totals
         $subtotal = collect($request->cart)->sum('totalPrice');
         $total = $subtotal - $request->shipping_cost; // Add shipping/tax if needed
-
-
 
         // Create order
         $order = Order::create([
