@@ -201,6 +201,13 @@ class OrderController extends Controller
         ], 201);
     }
 
+    public function order_status (Request $request,$id){
+        $order = Order::findOrFail($id);
+        $order->update([
+            'status'=> $request->status,
+        ]);
+    }
+
     /**
      * Display the specified resource.
      */

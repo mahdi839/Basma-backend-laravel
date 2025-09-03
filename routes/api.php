@@ -72,6 +72,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
     // Orders CRUD
     Route::apiResource('orders', OrderController::class)->only(['index', 'update', 'destroy', 'show']);
+    Route::post('order_status/{id}',[OrderController::class,'order_status']);
 
     // order download csv
     Route::get('orders-download-csv', [OrderController::class, 'downloadCSV']);
