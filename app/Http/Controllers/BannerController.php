@@ -41,7 +41,7 @@ class BannerController extends Controller
             'category_id' => 'required_if:type,category|exists:categories,id',
             'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
             'images' => 'required|array',
-            'images.*' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048'
+            'images.*' => 'required|image|mimes:jpg,jpeg,png,gif'
         ],
         [
             'category_id.required_if' => 'Category Field Is Required',
