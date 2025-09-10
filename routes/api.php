@@ -38,7 +38,7 @@ Route::get('product-slots_index/frontEndIndex', [ProductsSlotController::class, 
 Route::apiResource('orders', OrderController::class)->only(['store']);
 
 // Footer & Social links (public fetch)
-Route::apiResource('footer-settings', FooterSettingController::class)->only(['index', 'show']);
+Route::apiResource('footer-settings', FooterSettingController::class);
 Route::get('social-links-first', [SocialLinkController::class, 'getFirst']);
 
 // About Us (frontend fetch)
@@ -87,4 +87,8 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::post('about-us', [AboutUsController::class, 'store']);
     Route::put('about-us/{id}', [AboutUsController::class, 'update']);
     Route::delete('about-us/{id}', [AboutUsController::class, 'destroy']);
+
+
+
+    
 });
