@@ -62,14 +62,12 @@ class ProductController extends Controller
              'discount'=>$validated['discount']??null,
          ]);
 
-
          foreach($validated['image'] as $image){
            $imageName = $image->hashName();
            $destination = public_path('uploads/product_photos');
            $image->move($destination,$imageName);
             $product->images()->create(['image'=>'uploads/product_photos/'.$imageName]);
          }
-
 
                 // Handle size-based pricing if exists
             if (!empty($validated['sizes'])) {
