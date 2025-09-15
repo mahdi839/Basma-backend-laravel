@@ -1,23 +1,28 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AboutUsController;
 use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\SizeController;
 use App\Http\Controllers\API\CategoryController;
 use App\Http\Controllers\BannerController;
+use App\Http\Controllers\FooterSettingController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductsSlotController;
 use App\Http\Controllers\ShippingCostController;
-use App\Http\Controllers\FooterSettingController;
+use App\Http\Controllers\SizeController;
 use App\Http\Controllers\SocialLinkController;
-use App\Http\Controllers\AboutUsController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | Public Routes
 |--------------------------------------------------------------------------
 */
+
+// In routes/api.php or create a middleware
+Route::options('{any}', function () {
+    return response()->json([], 200);
+})->where('any', '.*');
 
 // Auth
 Route::post('signUp', [AuthController::class, 'signUp']);
@@ -43,7 +48,6 @@ Route::get('social-links-first', [SocialLinkController::class, 'getFirst']);
 
 // About Us (frontend fetch)
 Route::get('about-us', [AboutUsController::class, 'index']);
-
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +76,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
     // Orders CRUD
     Route::apiResource('orders', OrderController::class)->only(['index', 'update', 'destroy', 'show']);
-    Route::post('order_status/{id}',[OrderController::class,'order_status']);
+    Route::post('order_status/{id}', [OrderController::class, 'order_status']);
 
     // order download csv
     Route::get('orders-download-csv', [OrderController::class, 'downloadCSV']);
@@ -88,7 +92,4 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::put('about-us/{id}', [AboutUsController::class, 'update']);
     Route::delete('about-us/{id}', [AboutUsController::class, 'destroy']);
 
-
-
-    
 });
