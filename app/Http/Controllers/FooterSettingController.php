@@ -4,22 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\FooterSetting;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class FooterSettingController extends Controller
 {
     public function index()
     {
-        $data = Cache::remember('footer_settings', 60 * 60, function () {
-            return FooterSetting::first();
-        });
+        $data = FooterSetting::first();
+
         if ($data) {
-            return $data;
+            return response()->json($data);
         } else {
             return response()->json([
                 'message' => 'No Data Found',
-            ]);
+            ], 200);
         }
     }
 
@@ -49,9 +47,7 @@ class FooterSettingController extends Controller
             $path = $request->file('logo_path')->store('logos', 'public');
             $validated['logo_path'] = '/storage/'.$path;
         }
-
         $footer = FooterSetting::create($validated);
-        Cache::forget('footer_settings');
 
         return response()->json($footer, 201);
     }
@@ -77,9 +73,7 @@ class FooterSettingController extends Controller
             $path = $request->file('logo_path')->store('logos', 'public');
             $validated['logo_path'] = '/storage/'.$path;
         }
-
         $footer->update($validated);
-        Cache::forget('footer_settings');
 
         return response()->json($footer);
     }
