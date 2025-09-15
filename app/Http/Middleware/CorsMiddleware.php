@@ -4,34 +4,28 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class CorsMiddleware
 {
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
-        $allowedOrigins = [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'https://ibtikarbd.com/',
-        ];
-
-        $origin = $request->header('Origin');
-
-        // Handle preflight requests
+        // Handle preflight OPTIONS request
         if ($request->isMethod('OPTIONS')) {
-            $response = response('', 200);
-        } else {
-            $response = $next($request);
+            return response('', 200)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
+                ->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Requested-With, Accept, Origin, X-CSRF-TOKEN')
+                ->header('Access-Control-Allow-Credentials', 'true')
+                ->header('Access-Control-Max-Age', '86400');
         }
 
-        if (in_array($origin, $allowedOrigins)) {
-            $response->headers->set('Access-Control-Allow-Origin', $origin);
-            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-            $response->headers->set('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization, X-Requested-With');
-            $response->headers->set('Access-Control-Allow-Credentials', 'false');
-        }
+        $response = $next($request);
 
-        return $response;
+        // Add CORS headers to actual response
+        return $response
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
+            ->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Requested-With, Accept, Origin, X-CSRF-TOKEN')
+            ->header('Access-Control-Allow-Credentials', 'true');
     }
 }

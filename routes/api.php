@@ -11,6 +11,7 @@ use App\Http\Controllers\ProductsSlotController;
 use App\Http\Controllers\ShippingCostController;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\SocialLinkController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,8 +21,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 // In routes/api.php or create a middleware
-Route::options('{any}', function () {
-    return response()->json([], 200);
+Route::options('/{any}', function (Request $request) {
+    return response('', 200)
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
+        ->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Requested-With, Accept, Origin, X-CSRF-TOKEN')
+        ->header('Access-Control-Allow-Credentials', 'true')
+        ->header('Access-Control-Max-Age', '86400');
 })->where('any', '.*');
 
 // Auth
