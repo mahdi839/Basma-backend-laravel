@@ -2,16 +2,16 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\SizeController;
+use App\Http\Controllers\API\ProductController;
+use App\Http\Controllers\API\SizeController;
 use App\Http\Controllers\API\CategoryController;
-use App\Http\Controllers\BannerController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\ProductsSlotController;
-use App\Http\Controllers\ShippingCostController;
-use App\Http\Controllers\FooterSettingController;
-use App\Http\Controllers\SocialLinkController;
-use App\Http\Controllers\AboutUsController;
+use App\Http\Controllers\API\BannerController;
+use App\Http\Controllers\API\OrderController;
+use App\Http\Controllers\API\ProductsSlotController;
+use App\Http\Controllers\API\ShippingCostController;
+use App\Http\Controllers\API\FooterSettingController;
+use App\Http\Controllers\API\SocialLinkController;
+use App\Http\Controllers\API\AboutUsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -87,8 +87,4 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::post('about-us', [AboutUsController::class, 'store']);
     Route::put('about-us/{id}', [AboutUsController::class, 'update']);
     Route::delete('about-us/{id}', [AboutUsController::class, 'destroy']);
-
-
-
-    
 });
