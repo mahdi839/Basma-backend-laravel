@@ -42,15 +42,15 @@
                 <a href="#" class="nav-link">
                   <i class="nav-icon bi bi-box-seam-fill"></i>
                   <p>
-                    Widgets
+                   Products Management
                     <i class="nav-arrow bi bi-chevron-right"></i>
                   </p>
                 </a>
                 <ul class="nav nav-treeview">
                   <li class="nav-item">
-                    <a href="./widgets/small-box.html" class="nav-link">
-                      <i class="nav-icon bi bi-circle"></i>
-                      <p>Small Box</p>
+                    <a href="{{route('admin.create.size')}}" class="nav-link">
+                    <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+                      <p>Size</p>
                     </a>
                   </li>
                   <li class="nav-item">
