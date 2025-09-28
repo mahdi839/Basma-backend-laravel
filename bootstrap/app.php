@@ -15,11 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'isAdmin' => \App\Http\Middleware\isAdmin::class,
         ]);
-         // Enable CORS for API routes
-        $middleware->api(prepend: [
-            \App\Http\Middleware\CorsMiddleware::class,
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
+        
+        
+    // ✅ Ensure CORS runs for API routes
+    $middleware->api(prepend: [
+        \App\Http\Middleware\HandleCors::class,
+    ]);
+          
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
