@@ -24,7 +24,7 @@ return [
     |--------------------------------------------------------------------------
     | Allow requests from any domain
     */
-    'allowed_origins' => ['https://basma-front-end-next-js-xotm.vercel.app'],
+    'allowed_origins' => ['*'],
 
     /*
     |--------------------------------------------------------------------------
