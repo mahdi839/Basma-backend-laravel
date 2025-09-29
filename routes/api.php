@@ -71,7 +71,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::get('product-slots/edit/{id}', [ProductsSlotController::class, 'edit']);
 
     // Orders CRUD
-    Route::apiResource('orders', OrderController::class)->only(['index', 'update', 'destroy', 'show']);
+    Route::apiResource('orders', OrderController::class)->only(['index', 'create', 'update', 'destroy', 'show']);
     Route::post('order_status/{id}', [OrderController::class, 'order_status']);
 
     // order download csv
