@@ -11,7 +11,7 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $page = request()->get('page', 1);
+        
         $categories = Category::paginate(20); // no caching
 
         return response()->json($categories);
