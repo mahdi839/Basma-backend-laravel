@@ -13,23 +13,20 @@ class ProductsSlotController extends Controller
 {
     public function frontEndIndex()
     {
-        $home_category_products = Category::with(['product.images', 'product.sizes'])->where('home_category', 1)->orderBy('priority')->get();
+        $home_category_products = Category::with(['products.images:id,product_id,image', 'products.sizes'])->where('home_category', 1)->orderBy('priority')->get();
 
         return response()->json($home_category_products);
     }
 
     public function index()
     {
-
-        $home_category_products = Category::with('product')->where('home_category', 1)->paginate(10);
-
+        $home_category_products = Category::with('products')->where('home_category', 1)->paginate(10);
         return response()->json($home_category_products);
     }
 
     public function create()
     {
         $products = Product::select(['id', 'title'])->get();
-
         return response()->json([
             'data' => [
                 'products' => $products,
