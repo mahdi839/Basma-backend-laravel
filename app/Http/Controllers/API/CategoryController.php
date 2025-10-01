@@ -28,11 +28,13 @@ class CategoryController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'home_category' => 'nullable|boolean',
         ]);
 
         $category = Category::create([
             'name' => $request->name,
             'slug' => Str::slug($request->name),
+            'home_category' => $request->home_category ?? false,
         ]);
         return response()->json($category, 201);
     }
@@ -49,11 +51,13 @@ class CategoryController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'home_category' => 'nullable|boolean',
         ]);
 
         $category->update([
             'name' => $request->name,
             'slug' => Str::slug($request->name),
+            'home_category' => $request->home_category ?? false,
         ]);
         return response()->json($category);
     }
