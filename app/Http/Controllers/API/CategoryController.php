@@ -29,12 +29,14 @@ class CategoryController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'home_category' => 'nullable|boolean',
+            'priority'      => 'nullable|integer|min:0',
         ]);
 
         $category = Category::create([
             'name' => $request->name,
             'slug' => Str::slug($request->name),
             'home_category' => $request->home_category ?? false,
+            'priority'      => $request->priority ?? 0,
         ]);
         return response()->json($category, 201);
     }
@@ -52,12 +54,14 @@ class CategoryController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'home_category' => 'nullable|boolean',
+            'priority'      => 'nullable|integer|min:0',
         ]);
 
         $category->update([
             'name' => $request->name,
             'slug' => Str::slug($request->name),
             'home_category' => $request->home_category ?? false,
+            'priority'      => $request->priority ?? 0,
         ]);
         return response()->json($category);
     }

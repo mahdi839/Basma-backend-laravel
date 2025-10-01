@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::table('categories', function (Blueprint $table) {
             $table->boolean('home_category')->default(false)->after('slug');
+            $table->integer('priority')->nullable()->after('home_category');
         });
     }
 
@@ -23,6 +24,7 @@ return new class extends Migration
     {
         Schema::table('categories', function (Blueprint $table) {
             $table->dropColumn('home_category');
+            $table->dropColumn('priority');
         });
     }
 };
