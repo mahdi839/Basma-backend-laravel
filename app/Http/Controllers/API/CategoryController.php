@@ -20,20 +20,7 @@ class CategoryController extends Controller
     public function frontEndIndex()
     {
         $categories = Category::with('banner.banner_images')->get();
-        $simplyfiedData = $categories->map(function($category){
-           return [
-             'id' => $category->id,
-             'name'=> $category->name,
-             'slug' => $category->slug,
-             'home_category' => $category->home_category,
-            'priority' => $category->priority,
-            'created_at' => $category->created_at,
-            'updated_at' => $category->updated_at,
-            'banner_image'=> $category->banner && $category->banner->banner_images->isNotEmpty()?
-             $category->banner->banner_images->first()->path:null
-           ];
-        });
-        return response()->json($simplyfiedData);
+        return response()->json($categories);
     }
 
     public function store(Request $request)
