@@ -11,4 +11,8 @@ class Category extends Model
     public function products (){
         return $this->belongsToMany(Product::class);
     }
+
+    public function banner (){
+        return $this->hasOne(Banner::class);
+    }
 }
