@@ -11,7 +11,7 @@ use App\Http\Controllers\API\ShippingCostController;
 use App\Http\Controllers\API\FooterSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
-
+use App\Http\Controllers\Api\ProductVariantController;
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -44,6 +44,9 @@ Route::get('social-links-first', [SocialLinkController::class, 'getFirst']);
 
 // About Us (frontend fetch)
 Route::get('about-us', [AboutUsController::class, 'index']);
+
+ // Variants Crud
+    Route::apiResource('product-variants', ProductVariantController::class)->only(['index', 'show']);
 
 /*
 |--------------------------------------------------------------------------
@@ -87,5 +90,8 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::post('about-us', [AboutUsController::class, 'store']);
     Route::put('about-us/{id}', [AboutUsController::class, 'update']);
     Route::delete('about-us/{id}', [AboutUsController::class, 'destroy']);
+
+    // Variants Crud
+    Route::apiResource('product-variants', ProductVariantController::class)->only(['store', 'update','destroy']);
 
 });
