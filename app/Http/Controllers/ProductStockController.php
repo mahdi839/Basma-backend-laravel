@@ -56,4 +56,15 @@ class ProductStockController extends Controller
             'profit' => $profit
         ]);
     }
+
+    public function destroy($id)
+    {
+        $stock = ProductStock::find($id);
+        if (!$stock) {
+            return response()->json(['error' => 'Stock not found'], 404);
+        }
+
+        $stock->delete();
+        return response()->json(['message' => 'Stock deleted']);
+    }
 }
