@@ -36,6 +36,27 @@ class ProductStockController extends Controller
         return response()->json($stock);
     }
 
+      public function update(Request $request, $id)
+    {
+        $stock = ProductStock::find($id);
+        if (!$stock) {
+            return response()->json(['error' => 'Stock not found'], 404);
+        }
+
+        // Validate only the fields that are present
+        $validated = $request->validate([
+            // If you allow changing the product_id, keep it unique among product_stocks
+            'product_id'      => 'sometimes|exists:products,id|unique:product_stocks,product_id,' . $id,
+            'purchase_price'  => 'sometimes|numeric',
+            'stock'           => 'sometimes|integer|min:0',
+        ]);
+
+        $stock->fill($validated)->save();
+
+        // Return with related product title for convenience
+        return response()->json($stock->load('product:id,title'));
+    }
+
     // Decrement stock when order completed
     public function decrementStock($productId, $quantity, $sellPrice)
     {
