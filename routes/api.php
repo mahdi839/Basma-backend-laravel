@@ -12,6 +12,8 @@ use App\Http\Controllers\API\FooterSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
 use App\Http\Controllers\Api\ProductVariantController;
+use App\Http\Controllers\ProductStockController;
+
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -93,5 +95,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
     // Variants Crud
     Route::apiResource('product-variants', ProductVariantController::class)->only(['store', 'update','destroy']);
+   Route::apiResource('inventory-management', ProductStockController::class);
 
 });
+ 
