@@ -17,7 +17,7 @@ class ProductStockController extends Controller
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
-            'product_variant' => 'sometimes|nullable|string',
+            'product_variant_id' => 'sometimes|nullable|exists:product_variants,id',
             'purchase_price' => 'required|numeric',
             'stock' => 'required|integer|min:1',
         ]);
@@ -25,7 +25,7 @@ class ProductStockController extends Controller
         $stock = ProductStock::updateOrCreate(
         ['product_id' => $request->product_id],
         [
-            'product_variant' => $request->product_variant,
+            'product_variant_id' => $request->product_variant_id,
             'purchase_price' => $request->purchase_price,
             'stock' => $request->stock,
         ]
@@ -52,7 +52,7 @@ class ProductStockController extends Controller
         $validated = $request->validate([
             // If you allow changing the product_id, keep it unique among product_stocks
             'product_id'      => 'sometimes|exists:products,id|unique:product_stocks,product_id,' . $id,
-            'product_variant' => 'sometimes|nullable|string',
+            'product_variant_id' => 'sometimes|nullable|exists:product_variants,id',
             'purchase_price'  => 'sometimes|numeric',
             'stock'           => 'sometimes|integer|min:0',
         ]);
