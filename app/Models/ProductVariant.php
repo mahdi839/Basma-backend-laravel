@@ -26,4 +26,8 @@ class ProductVariant extends Model
         // If your products table has base_price column:
         return optional($this->product)->base_price;
     }
+
+    public function stocks (){
+        return $this->hasMany(ProductStock::class,'product_variant_id');
+    }
 }

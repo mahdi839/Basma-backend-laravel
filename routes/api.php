@@ -95,7 +95,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
     // Variants Crud
     Route::apiResource('product-variants', ProductVariantController::class)->only(['store', 'update','destroy']);
-   Route::apiResource('inventory-management', ProductStockController::class);
+  
 
 });
- 
+  Route::apiResource('inventory-management', ProductStockController::class);

@@ -9,7 +9,7 @@ class ProductStockController extends Controller
 {
     public function index()
     {
-        $stocks = ProductStock::with('product:id,title')->get();
+        $stocks = ProductStock::with('product:id,title','variant')->get();
         return response()->json($stocks);
     }
     // Add purchase stock
@@ -35,10 +35,16 @@ class ProductStockController extends Controller
     }
 
     // Get stock for a product
-    public function show($productId)
+    public function show($id)
     {
-        $stock = ProductStock::where('product_id', $productId)->first();
-        return response()->json($stock);
+         $stock = ProductStock::with(['product:id,title', 'variant'])
+        ->find($id);
+
+    if (!$stock) {
+        return response()->json(['error' => 'Stock not found'], 404);
+    }
+
+    return response()->json($stock);
     }
 
       public function update(Request $request, $id)
