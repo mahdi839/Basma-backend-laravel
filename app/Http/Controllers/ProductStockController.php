@@ -23,10 +23,13 @@ class ProductStockController extends Controller
         ]);
 
         $stock = ProductStock::updateOrCreate(
-            ['product_id' => $request->product_id],
-            ['product_variant' => $request->product_variant],
-            ['purchase_price' => $request->purchase_price, 'stock' => $request->stock]
-        );
+        ['product_id' => $request->product_id],
+        [
+            'product_variant' => $request->product_variant,
+            'purchase_price' => $request->purchase_price,
+            'stock' => $request->stock,
+        ]
+    );
 
         return response()->json($stock);
     }
