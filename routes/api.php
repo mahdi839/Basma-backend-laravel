@@ -11,6 +11,7 @@ use App\Http\Controllers\API\ShippingCostController;
 use App\Http\Controllers\API\FooterSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
+use App\Http\Controllers\API\DashboardSummaryController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\ProductStockController;
 
@@ -57,7 +58,10 @@ Route::get('about-us', [AboutUsController::class, 'index']);
 */
 
 Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
-
+   
+//    dashboard summery
+    Route::get('/dashboard/summary', [DashboardSummaryController::class, 'summary']);
+    
     // Auth
     Route::post('logOut', [AuthController::class, 'logOut']);
 
@@ -95,7 +99,8 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
     // Variants Crud
     Route::apiResource('product-variants', ProductVariantController::class)->only(['store', 'update','destroy']);
-  
 
+    //    inventory management
+    Route::apiResource('inventory-management', ProductStockController::class);
 });
-  Route::apiResource('inventory-management', ProductStockController::class);
+  

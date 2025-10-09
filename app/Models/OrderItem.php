@@ -10,4 +10,11 @@ class OrderItem extends Model
     public function order(){
         return $this->belongsTo(Order::class);
     }
+
+  public function selectedVariant()
+{
+    return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+}
+
+
 }

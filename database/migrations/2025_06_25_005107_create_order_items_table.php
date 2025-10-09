@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('order_id')->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('product_id')->nullable(); // Optional: link to products table
             $table->string('title');
-            $table->string('size')->nullable();
             $table->decimal('unitPrice', 10, 2);
             $table->integer('qty');
             $table->decimal('totalPrice', 10, 2);

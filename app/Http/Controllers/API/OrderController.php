@@ -188,7 +188,7 @@ class OrderController extends Controller
                 'order_id' => $order->id,
                 'product_id' => $item['id'],
                 'title' => $item['title'],
-                'size' => $item['size'],
+                'product_variant_id' => $item['size'],
                 'unitPrice' => $item['unitPrice'],
                 'qty' => $item['qty'],
                 'totalPrice' => $item['totalPrice'],
