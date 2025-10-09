@@ -25,7 +25,7 @@ class OrderController extends Controller
         $product_title = $request->query('product_title', '');
 
 
-        $orders = Order::with('orderItems')
+        $orders = Order::with('orderItems.selectedVariant')
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
