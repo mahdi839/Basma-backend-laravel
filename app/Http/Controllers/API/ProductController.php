@@ -137,6 +137,7 @@ class ProductController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        
         $validated = $request->validate([
             'title'       => 'required',
             'sub_title'   => 'required',
@@ -150,7 +151,7 @@ class ProductController extends Controller
 
             // images to delete
             'deleted_images'   => 'nullable|array',
-            'deleted_images.*' => 'exists:images,id',
+            'deleted_images.*' => 'exists:product_images,id',
 
             // categories
             'categories'               => 'nullable|array',
@@ -182,7 +183,7 @@ class ProductController extends Controller
             'discount'    => $validated['discount'] ?? null,
             'price'       => $request->price ?? null,
         ]);
-
+        
         // image deletions
         if (!empty($validated['deleted_images'])) {
             foreach ($validated['deleted_images'] as $imageId) {
