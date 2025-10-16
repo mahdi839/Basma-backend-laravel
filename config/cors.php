@@ -24,8 +24,10 @@ return [
     |--------------------------------------------------------------------------
     | Allow requests from any domain
     */
-    'allowed_origins' => ['*'],
-
+    'allowed_origins' => [ 'http://localhost:3000',      // for Next.js dev
+        'https://basma-front-end-next-js-xotm.vercel.app', 
+        'https://ibtikarbd.com'
+],
     /*
     |--------------------------------------------------------------------------
     | Allowed Origins Patterns
@@ -61,7 +63,7 @@ return [
     |--------------------------------------------------------------------------
     | Set false if you allow all origins
     */
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];
 

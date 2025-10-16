@@ -1,4 +1,6 @@
 <?php
+
+use App\Http\Controllers\API\AbandonedCheckoutController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ProductController;
@@ -50,6 +52,10 @@ Route::get('about-us', [AboutUsController::class, 'index']);
 
  // Variants Crud
     Route::apiResource('product-variants', ProductVariantController::class)->only(['index', 'show']);
+
+//  Abandoned checkout system
+    Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 'store']);
+    Route::get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
