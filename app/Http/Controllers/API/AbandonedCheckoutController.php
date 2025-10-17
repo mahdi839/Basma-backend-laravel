@@ -5,54 +5,75 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\AbandonedCheckout;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AbandonedCheckoutController extends Controller
 {
-      public function store(Request $request)
+    public function store(Request $request)
     {
         $data = $request->validate([
-            'cart_items' => 'required',
+            'cart_items' => 'required|array',
             'name' => 'nullable|string',
             'phone' => 'nullable|string',
             'address' => 'nullable|string',
         ]);
-         // ...existing code...
-       $phone = $data['phone'] ?? null;
-       $userId = auth()->check() ? auth()->id() : null;
-       AbandonedCheckout::updateOrCreate(
-       [
-        'phone' => $phone,
-        'session_id' => session()->getId(),
-        'user_id' => $userId,
-        ],
-        [
-            'cart_items' => $data['cart_items'],
+
+        $phone = $data['phone'] ?? null;
+        $sessionId = $request->header('X-Session-ID') ?? session()->getId();
+
+        // Skip if no phone number provided (user hasn't filled form yet)
+        if (empty($phone)) {
+            return response()->json(['message' => 'No phone number provided.'], 400);
+        }
+
+        // Check if abandoned checkout already exists for this phone
+        $existingCheckout = AbandonedCheckout::where('phone', $phone)
+            ->where('is_recovered', false) // Only check non-converted checkouts
+            ->first();
+
+        if ($existingCheckout) {
+            // Update only if cart items changed or other details changed
+            $existingCheckout->update([
+                'cart_items' => json_encode($data['cart_items']),
+                'name' => $data['name'] ?? $existingCheckout->name,
+                'address' => $data['address'] ?? $existingCheckout->address,
+                'session_id' => $sessionId,
+            ]);
+
+            return response()->json(['message' => 'Checkout progress updated.']);
+        }
+
+        // Create new abandoned checkout
+        AbandonedCheckout::create([
+            'phone' => $phone,
+            'cart_items' => json_encode($data['cart_items']),
             'name' => $data['name'] ?? null,
             'address' => $data['address'] ?? null,
-        ]
-);
+            'session_id' => $sessionId,
+            'user_id' => Auth::guard('sanctum')->check()?Auth::guard('sanctum')->id():null,
+            'is_recovered' => false,
+        ]);
+
         return response()->json(['message' => 'Checkout progress saved.']);
     }
 
     public function index(Request $request)
     {
-           $query = AbandonedCheckout::query();
-
-            // 🗓️ Optional date filters
-            if ($request->has('start_date') && $request->has('end_date')) {
-                $query->whereBetween('created_at', [
-                    $request->start_date . ' 00:00:00',
-                    $request->end_date . ' 23:59:59'
-                ]);
-            } elseif ($request->has('start_date')) {
-                $query->whereDate('created_at', '>=', $request->start_date);
-            } elseif ($request->has('end_date')) {
-                $query->whereDate('created_at', '<=', $request->end_date);
-            } else {
-                // 🔥 Default: show today's data only
-                $query->whereDate('created_at', now()->toDateString());
-            }
-
-            return $query->latest()->paginate(20);
+        return AbandonedCheckout::where('is_recovered', false)
+            ->latest()
+            ->get();
     }
+
+    // Add to AbandonedCheckoutController
+public function markAsConverted(Request $request)
+{
+    $request->validate([
+        'phone' => 'required|string',
+    ]);
+
+    AbandonedCheckout::where('phone', $request->phone)
+        ->update(['is_recovered' => true]);
+
+    return response()->json(['message' => 'Checkout marked as converted.']);
+ }
 }
