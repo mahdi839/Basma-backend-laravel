@@ -28,7 +28,8 @@ class AbandonedCheckoutController extends Controller
 
         // Check if abandoned checkout already exists for this phone
         $existingCheckout = AbandonedCheckout::where('phone', $phone)
-            ->where('is_recovered', false) // Only check non-converted checkouts
+            ->where('is_recovered', false)
+            ->orWhere('session_id',$sessionId) // Only check non-converted checkouts
             ->first();
 
         if ($existingCheckout) {
