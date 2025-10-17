@@ -56,6 +56,8 @@ Route::get('about-us', [AboutUsController::class, 'index']);
 //  Abandoned checkout system
     Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 'store']);
     Route::get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
+// In routes/api.php
+    Route::post('/mark-checkout-converted', [AbandonedCheckoutController::class, 'markAsConverted']);
 
 /*
 |--------------------------------------------------------------------------
