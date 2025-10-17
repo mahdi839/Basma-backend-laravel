@@ -57,6 +57,11 @@ class OrderController extends Controller
                 });
             })
             ->paginate(10);
+       $orders->getCollection()->transform(function($order){
+            $orderCount = Order::where('phone',$order->phone)->count();
+            $order->customer_type = $orderCount > 1?'Reapeat Customer':'New';
+            return $order;
+        });
         return response()->json($orders);
     }
 
@@ -194,16 +199,6 @@ class OrderController extends Controller
                 'qty' => $item['qty'],
                 'totalPrice' => $item['totalPrice'],
             ]);
-        }
-
-        if(auth()->check()){
-            AbandonedCheckout::where('user_id',auth()->id())->delete();
-        }else{
-             $q = AbandonedCheckout::where('session_id', session()->getId());
-                if (!empty($validated['phone'])) {
-                    $q->orWhere('phone', $validated['phone']);
-                }
-                $q->delete();
         }
 
         return response()->json([
