@@ -16,23 +16,43 @@ class AbandonedCheckoutController extends Controller
             'phone' => 'nullable|string',
             'address' => 'nullable|string',
         ]);
-
-        AbandonedCheckout::updateOrCreate(
-            ['session_id' => session()->getId()],
-            [
-                'user_id' => auth()->id(),
-                'cart_items' => json_encode($data['cart_items']),
-                'name' => $data['name'] ?? null,
-                'phone' => $data['phone'] ?? null,
-                'address' => $data['address'] ?? null,
-            ]
-        );
-
+         // ...existing code...
+       $phone = $data['phone'] ?? null;
+       $userId = auth()->check() ? auth()->id() : null;
+       AbandonedCheckout::updateOrCreate(
+       [
+        'phone' => $phone,
+        'session_id' => session()->getId(),
+        'user_id' => $userId,
+        ],
+        [
+            'cart_items' => $data['cart_items'],
+            'name' => $data['name'] ?? null,
+            'address' => $data['address'] ?? null,
+        ]
+);
         return response()->json(['message' => 'Checkout progress saved.']);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return AbandonedCheckout::latest()->get();
+           $query = AbandonedCheckout::query();
+
+            // 🗓️ Optional date filters
+            if ($request->has('start_date') && $request->has('end_date')) {
+                $query->whereBetween('created_at', [
+                    $request->start_date . ' 00:00:00',
+                    $request->end_date . ' 23:59:59'
+                ]);
+            } elseif ($request->has('start_date')) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            } elseif ($request->has('end_date')) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            } else {
+                // 🔥 Default: show today's data only
+                $query->whereDate('created_at', now()->toDateString());
+            }
+
+            return $query->latest()->paginate(20);
     }
 }

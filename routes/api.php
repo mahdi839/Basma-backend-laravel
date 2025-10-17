@@ -55,7 +55,7 @@ Route::get('about-us', [AboutUsController::class, 'index']);
 
 //  Abandoned checkout system
     Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 'store']);
-    Route::get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
+    
 
 /*
 |--------------------------------------------------------------------------
@@ -88,6 +88,9 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     // Orders CRUD
     Route::apiResource('orders', OrderController::class)->only(['index', 'create', 'update', 'destroy', 'show']);
     Route::post('order_status/{id}', [OrderController::class, 'order_status']);
+
+    //  show incomplete orders
+    Route::get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
 
     // order download csv
     Route::get('orders-download-csv', [OrderController::class, 'downloadCSV']);
