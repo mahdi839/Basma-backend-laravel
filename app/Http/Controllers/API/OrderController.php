@@ -59,7 +59,7 @@ class OrderController extends Controller
             ->paginate(10);
        $orders->getCollection()->transform(function($order){
             $orderCount = Order::where('phone',$order->phone)->count();
-            $order->customer_type = $orderCount > 1?'Reapeat Customer':'New';
+            $order->customer_type = $orderCount > 1?'Repeat Customer':'New';
             return $order;
         });
         return response()->json($orders);
