@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\API;
+
 use App\Http\Controllers\Controller;
 use App\Models\ShippingCost;
 use Illuminate\Http\Request;
@@ -13,16 +14,15 @@ class ShippingCostController extends Controller
     public function index()
     {
         $shipping_cost = ShippingCost::all();
-        return response()->json($shipping_cost);
+        return response()->json([
+            'data' => $shipping_cost
+        ]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create(Request $request)
-    {
-        
-    }
+    public function create(Request $request) {}
 
     /**
      * Store a newly created resource in storage.
@@ -36,7 +36,7 @@ class ShippingCostController extends Controller
         ]);
 
         $data =  ShippingCost::create($request->all());
-        return response()->json($data,201);
+        return response()->json($data, 201);
     }
 
     /**
@@ -52,7 +52,7 @@ class ShippingCostController extends Controller
         $shippingCost = ShippingCost::latest()->first();
         return response()->json($shippingCost, 200);
     }
-    
+
 
     /**
      * Show the form for editing the specified resource.
@@ -72,7 +72,7 @@ class ShippingCostController extends Controller
             'outside_dhaka' => 'nullable|numeric',
             'one_shipping_cost' => 'nullable|numeric',
         ]);
-       $shippingCost = ShippingCost::findOrFail($id);
+        $shippingCost = ShippingCost::findOrFail($id);
         $shippingCost->update($request->all());
 
         return response()->json(['message' => 'Updated successfully']);
