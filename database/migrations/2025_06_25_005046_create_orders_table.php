@@ -24,7 +24,8 @@ return new class extends Migration
             $table->integer('total');
             $table->string('payment_method');
             $table->longText('delivery_notes')->nullable();
-            $table->string('status')->default('pending'); // e.g., pending, paid, shipped
+            $table->string('status')->default('pending'); 
+            $table->boolean('courier_entry')->default(false);
             $table->timestamps();
         });
     }

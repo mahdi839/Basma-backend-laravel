@@ -14,6 +14,7 @@ use App\Http\Controllers\API\FooterSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
 use App\Http\Controllers\API\DashboardSummaryController;
+use App\Http\Controllers\API\PathaoController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\ProductStockController;
 
@@ -113,5 +114,11 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
     //    inventory management
     Route::apiResource('inventory-management', ProductStockController::class);
+
+    // Create Pathao order for a specific order
+    Route::post('/pathao/orders/{orderId}/create', [PathaoController::class, 'createOrder']);
+
 });
+
+Route::get('/test-token', [PathaoController::class, 'testToken']);
   
