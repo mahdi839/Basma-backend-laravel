@@ -17,10 +17,10 @@ class FacebookConversionService
 
     public function isEnabled()
     {
-        return $this->settings && 
-               $this->settings->is_active && 
-               $this->settings->pixel_id && 
-               $this->settings->access_token;
+        return $this->settings &&
+            $this->settings->is_active &&
+            $this->settings->pixel_id &&
+            $this->settings->access_token;
     }
 
     public function sendEvent($eventName, $userData = [], $customData = [], $eventSourceUrl = null)
@@ -39,11 +39,18 @@ class FacebookConversionService
             $userDataPayload = array_filter([
                 'em' => $hashedEmail,
                 'ph' => $hashedPhone,
-                'client_ip_address' => $userData['client_ip_address'] ?? request()->ip(),
-                'client_user_agent' => $userData['client_user_agent'] ?? request()->userAgent(),
                 'fbp' => $userData['fbp'] ?? null,
                 'fbc' => $userData['fbc'] ?? null,
+                'client_ip_address' => $userData['client_ip_address'] ?? request()->ip(),
+                'client_user_agent' => $userData['client_user_agent'] ?? request()->userAgent(),
             ]);
+
+            // Ensure at least one identifier exists
+            if (empty($userDataPayload['em']) && empty($userDataPayload['ph']) && empty($userDataPayload['fbp']) && empty($userDataPayload['fbc'])) {
+                Log::warning("Facebook event '{$eventName}' sent without user identifiers. It may not appear in reporting.");
+                // Optional: Skip sending if no identifier
+                // return null;
+            }
 
             // Build custom data
             $customDataPayload = array_filter([
@@ -82,17 +89,19 @@ class FacebookConversionService
             Log::info('Facebook Conversion API event sent', [
                 'event_name' => $eventName,
                 'test_mode' => $this->settings->is_test_mode,
+                'user_data' => $userDataPayload,
+                'custom_data' => $customDataPayload,
+                'event_source_url' => $eventSourceUrl ?? request()->headers->get('referer'),
                 'response' => $response->json()
             ]);
 
             return $response->json();
-
         } catch (\Exception $e) {
             Log::error('Facebook Conversion API error', [
                 'message' => $e->getMessage(),
                 'event_name' => $eventName
             ]);
-            
+
             return null;
         }
     }

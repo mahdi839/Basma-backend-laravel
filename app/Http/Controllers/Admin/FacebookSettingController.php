@@ -46,13 +46,14 @@ class FacebookSettingController extends Controller
             'access_token' => 'required|string',
             'test_event_code' => 'nullable|string',
         ]);
-
+        $eventSourceUrl = $validated['event_source_url'] ?? 'http://localhost:3000';
         try {
             // Prepare test event payload
             $event = [
                 'event_name' => 'TestConnection',
                 'event_time' => time(),
                 'action_source' => 'website',
+                'event_source_url' => $eventSourceUrl,
                 'user_data' => [
                     'client_ip_address' => request()->ip(),
                     'client_user_agent' => request()->userAgent(),
