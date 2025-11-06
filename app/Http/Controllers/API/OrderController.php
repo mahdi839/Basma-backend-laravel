@@ -8,9 +8,18 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
-
+use App\Services\FacebookConversionService;
+use Illuminate\Support\Facades\DB;
 class OrderController extends Controller
 {
+
+      protected $facebookService;
+
+    public function __construct(FacebookConversionService $facebookService)
+    {
+        $this->facebookService = $facebookService;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -149,12 +158,14 @@ class OrderController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+  
     public function store(Request $request)
     {
         // Validate request data
         $validated = $request->validate([
             'name' => 'required|string',
             'phone' => 'nullable|string',
+            'email' => 'nullable|email',
             'shipping_cost' => 'required|numeric',
             'district' => 'required|string',
             'address' => 'required|string',
@@ -167,44 +178,93 @@ class OrderController extends Controller
             'cart.*.unitPrice' => 'required|numeric',
             'cart.*.qty' => 'required|integer',
             'cart.*.totalPrice' => 'required|numeric',
+            'total_amount' => 'required|numeric',
+            // Facebook tracking data
+            'fbp' => 'nullable|string',
+            'fbc' => 'nullable|string',
+            'event_source_url' => 'nullable|string',
         ]);
 
-        // Calculate totals
-        $subtotal = collect($request->cart)->sum('totalPrice');
-        $total = $subtotal - $request->shipping_cost; // Add shipping/tax if needed
+        DB::beginTransaction();
+        try {
+            // Calculate totals
+            $subtotal = collect($request->cart)->sum('totalPrice');
+            $total = $request->total_amount;
 
-        // Create order
-        $order = Order::create([
-            'order_number' => 'ORD-' . date('Ymd') . '-' . strtoupper(uniqid()),
-            'name' => $request->name,
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'district' => $request->district,
-            'subtotal' => $subtotal,
-            'total' => $total,
-            'shipping_cost' => $request->shipping_cost,
-            'delivery_notes' => $request->delivery_notes,
-            'status' => 'placed',
-            'payment_method' => $request->payment_method,
-        ]);
-
-        // Create order items
-        foreach ($request->cart as $item) {
-            OrderItem::create([
-                'order_id' => $order->id,
-                'product_id' => $item['id'],
-                'title' => $item['title'],
-                'product_variant_id' => $item['size'],
-                'unitPrice' => $item['unitPrice'],
-                'qty' => $item['qty'],
-                'totalPrice' => $item['totalPrice'],
+            // Create order
+            $order = Order::create([
+                'order_number' => 'ORD-' . date('Ymd') . '-' . strtoupper(uniqid()),
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'district' => $request->district,
+                'subtotal' => $subtotal,
+                'total' => $total,
+                'shipping_cost' => $request->shipping_cost,
+                'delivery_notes' => $request->delivery_notes,
+                'status' => 'placed',
+                'payment_method' => $request->payment_method,
             ]);
-        }
 
-        return response()->json([
-            'message' => 'Order created successfully',
-            'order_number' => $order->order_number
-        ], 201);
+            // Create order items
+            $contentIds = [];
+            $contents = [];
+            
+            foreach ($request->cart as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item['id'],
+                    'title' => $item['title'],
+                    'product_variant_id' => $item['size'],
+                    'unitPrice' => $item['unitPrice'],
+                    'qty' => $item['qty'],
+                    'totalPrice' => $item['totalPrice'],
+                ]);
+
+                // Prepare Facebook data
+                $contentIds[] = (string)$item['id'];
+                $contents[] = [
+                    'id' => (string)$item['id'],
+                    'quantity' => $item['qty'],
+                    'item_price' => $item['unitPrice']
+                ];
+            }
+
+            DB::commit();
+
+            // Track Facebook Purchase Event
+            $this->facebookService->sendEvent(
+                'Purchase',
+                [
+                    'email' => $request->email ?? null,
+                    'phone' => $request->phone ?? null,
+                    'fbp' => $request->fbp ?? null,
+                    'fbc' => $request->fbc ?? null,
+                ],
+                [
+                    'value' => $total,
+                    'currency' => 'BDT',
+                    'content_ids' => $contentIds,
+                    'contents' => $contents,
+                    'content_type' => 'product',
+                    'num_items' => count($request->cart),
+                    'event_id' => 'order_' . $order->order_number, // For deduplication
+                ],
+                $request->event_source_url ?? null
+            );
+
+            return response()->json([
+                'message' => 'Order created successfully',
+                'order_number' => $order->order_number
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Order creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function order_status (Request $request,$id){
