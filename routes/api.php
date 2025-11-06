@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\FacebookSettingController;
 use App\Http\Controllers\API\AbandonedCheckoutController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
@@ -117,6 +118,11 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
     // Create Pathao order for a specific order
     Route::post('/pathao/orders/{orderId}/create', [PathaoController::class, 'createOrder']);
+    
+    // facebook server side tracking related controller 
+    Route::get('/facebook-settings', [FacebookSettingController::class, 'index']);
+    Route::post('/facebook-settings', [FacebookSettingController::class, 'store']);
+    Route::post('/facebook-settings/test', [FacebookSettingController::class, 'testConnection']);
 
 });
 
