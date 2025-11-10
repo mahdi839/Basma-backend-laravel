@@ -22,6 +22,8 @@ class SocialLinkController extends Controller
             'instagram' => 'nullable|url',
             'tweeter' => 'nullable|url',
             'pinterest' => 'nullable|url',
+            'facebook_id' => 'nullable',
+            'whatsapp_number'=> 'nullable'
         ]);
 
         $socialLink = SocialLink::create($validated);
@@ -38,6 +40,8 @@ class SocialLinkController extends Controller
             'instagram' => 'nullable|url',
             'tweeter' => 'nullable|url',
             'pinterest' => 'nullable|url',
+            'facebook_id' => 'nullable',
+            'whatsapp_number'=> 'nullable'
         ]);
 
         $socialLink->update($validated);
