@@ -18,8 +18,6 @@ return new class extends Migration
             $table->string('company_address')->nullable();
             $table->string('company_email')->nullable();
             $table->string('company_phone')->nullable();
-            $table->integer('messanger_id')->nullable();
-            $table->integer('whatsapp_number')->nullable();
             $table->timestamps();
         });
     }

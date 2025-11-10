@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('instagram')->nullable();
             $table->string('twitter')->nullable();
             $table->string('pinterest')->nullable();
+             $table->integer('facebook_id')->nullable();
+            $table->integer('whatsapp_number')->nullable();
             $table->timestamps();
         });
     }
