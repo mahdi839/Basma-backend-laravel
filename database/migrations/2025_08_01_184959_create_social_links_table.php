@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('social_links', function (Blueprint $table) {
             $table->id();
-             $table->string('facebook')->nullable();
+            $table->string('facebook')->nullable();
             $table->string('youtube')->nullable();
             $table->string('instagram')->nullable();
             $table->string('twitter')->nullable();
             $table->string('pinterest')->nullable();
-             $table->integer('facebook_id')->nullable();
-            $table->integer('whatsapp_number')->nullable();
+            $table->string('facebook_id')->nullable();
+            $table->string('whatsapp_number')->nullable();
             $table->timestamps();
         });
     }

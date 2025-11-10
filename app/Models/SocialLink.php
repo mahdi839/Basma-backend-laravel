@@ -13,5 +13,7 @@ class SocialLink extends Model
         'instagram',
         'twitter',
         'pinterest',
+        'facebook_id',
+        'whatsapp_number'
     ];
 }
