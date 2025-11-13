@@ -277,11 +277,12 @@ class ProductController extends Controller
     public function category_products ($id){
        $product = Product::findOrFail($id);
        $relatedProducts = Product::whereHas('category',function($q) use ($product){
-          $q->whereIn('categories.id',$product->category->pluck($product->id));
+          $q->whereIn('categories.id',$product->category->pluck('id'));
        })
+       ->with(['images', 'variants'])
        ->where('id','!=', $product->id)
        ->take(10)
        ->get();
-       return $relatedProducts;
+       return response()->json($relatedProducts);
     }
 }
