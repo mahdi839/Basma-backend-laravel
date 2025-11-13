@@ -273,4 +273,15 @@ class ProductController extends Controller
             'message' => 'Product deleted successfully',
         ], 200);
     }
+
+    public function category_products ($id){
+       $product = Product::findOrFail($id);
+       $relatedProducts = Product::whereHas('category',function($q) use ($product){
+          $q->whereIn('categories.id',$product->category->pluck($product->id));
+       })
+       ->where('id','!=', $product->id)
+       ->take(10)
+       ->get();
+       return $relatedProducts;
+    }
 }

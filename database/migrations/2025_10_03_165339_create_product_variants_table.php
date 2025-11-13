@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('product_id')
                 ->constrained('products')
                 ->cascadeOnDelete();
-
             $table->string('attribute');   // e.g., size, weight, color
             $table->string('value');       // e.g., M, 1kg, Red
 

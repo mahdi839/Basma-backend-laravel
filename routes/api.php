@@ -37,6 +37,9 @@ Route::apiResource('banners', BannerController::class)->only(['index', 'show']);
 Route::apiResource('sizes', SizeController::class)->only(['index', 'show']);
 Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
 
+// products whos category is same
+Route::get('/category_products/{id}',[ProductController::class,'category_products']);
+
 // Frontend-specific endpoints
 Route::get('frontend/categories', [CategoryController::class, 'frontEndIndex']);
 Route::get('frontend/banner', [BannerController::class, 'frontEndIndex']);
