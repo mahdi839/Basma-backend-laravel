@@ -1,21 +1,21 @@
 <?php
 
 namespace App\Http\Controllers\API;
+
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
 
-
 class ProductController extends Controller
 {
-  /**
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $slug = $request->query('slug','');
+        $slug = $request->query('slug', '');
 
-        $allProducts = Product::with(['images', 'variants', 'faqs', 'category'])
+        $allProducts = Product::with(['images', 'sizes', 'faqs', 'category'])
             ->when($slug, function ($q) use ($slug) {
                 $q->whereHas('category', function ($query) use ($slug) {
                     $query->where('slug', $slug);
@@ -35,69 +35,103 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title'       => 'required',
-            'sub_title'   => 'required',
-            'video_url'   => 'nullable',
-            'description' => 'nullable',
-            'discount'    => 'nullable',
+            'title'             => 'required',
+            'short_description' => 'required',
+            'video_url'         => 'nullable',
+            'description'       => 'nullable',
+            'discount'          => 'nullable',
+            'status'            => 'required|in:in-stock,sold,prebook',
 
             // images
             'image'   => 'required|array',
             'image.*' => 'image|mimes:jpg,jpeg,png',
 
             // categories
-            'categories'                 => 'nullable|array',
-            'categories.*.category_id'   => 'required|exists:categories,id',
+            'categories'               => 'nullable|array',
+            'categories.*.category_id' => 'required|exists:categories,id',
 
-            // single base price if there are no variant prices
-            'price'      => 'required_without:variants|nullable|numeric|min:0',
+            // base price (optional if sizes have prices)
+            'price' => 'nullable|integer|min:0',
 
-            // VARIANTS (new)
-            'variants'                 => 'nullable|array',
-            'variants.*.attribute'     => 'required|string|max:50',
-            'variants.*.value'         => 'required|string|max:100',
-            'variants.*.price'         => 'nullable|integer|min:0',
+            // COLORS with color codes and images
+            'colors'              => 'nullable|array',
+            'colors.*.code'       => 'required|string',  // hex code like #FF5733
+            'colors.*.name'       => 'nullable|string',   // optional color name
+            'colors.*.image'      => 'nullable|image|mimes:jpg,jpeg,png',
+
+            // SIZES with prices and stock
+            'sizes'              => 'nullable|array',
+            'sizes.*.size_id'    => 'required|exists:sizes,id',
+            'sizes.*.price'      => 'required|integer|min:0',
+            'sizes.*.stock'      => 'required|integer|min:0',
 
             // FAQs
             'question' => 'nullable|array',
             'answer'   => 'nullable|array',
         ]);
 
-        // create product
+        // Handle colors with images
+        $colorsData = [];
+        if (!empty($validated['colors'])) {
+            foreach ($validated['colors'] as $index => $color) {
+                $colorItem = [
+                    'code' => $color['code'],
+                    'name' => $color['name'] ?? null,
+                ];
+
+                // Handle color image if provided
+                if (isset($color['image'])) {
+                    $imageName   = $color['image']->hashName();
+                    $destination = public_path('uploads/color_images');
+                    
+                    // Create directory if not exists
+                    if (!file_exists($destination)) {
+                        mkdir($destination, 0755, true);
+                    }
+                    
+                    $color['image']->move($destination, $imageName);
+                    $colorItem['image'] = 'uploads/color_images/' . $imageName;
+                }
+
+                $colorsData[] = $colorItem;
+            }
+        }
+
+        // Create product
         $product = Product::create([
-            'title'       => $validated['title'],
-            'sub_title'   => $validated['sub_title'],
-            'price'       => $validated['price'] ?? null,   // your existing single price column
-            'description' => $validated['description'] ?? null,
-            'video_url'   => $validated['video_url'] ?? null,
-            'discount'    => $validated['discount'] ?? null,
+            'title'             => $validated['title'],
+            'short_description' => $validated['short_description'],
+            'price'             => $validated['price'] ?? null,
+            'description'       => $validated['description'] ?? null,
+            'video_url'         => $validated['video_url'] ?? null,
+            'discount'          => $validated['discount'] ?? null,
+            'status'            => $validated['status'],
+            'colors'            => !empty($colorsData) ? $colorsData : null,
         ]);
 
-        // images
+        // Product images
         foreach ($validated['image'] as $image) {
             $imageName   = $image->hashName();
             $destination = public_path('uploads/product_photos');
             $image->move($destination, $imageName);
-            $product->images()->create(['image' => 'uploads/product_photos/'.$imageName]);
+            $product->images()->create(['image' => 'uploads/product_photos/' . $imageName]);
         }
 
-        // categories
+        // Categories
         if (!empty($validated['categories'])) {
             $product->category()->attach(
                 collect($validated['categories'])->pluck('category_id')->all()
             );
         }
 
-        // VARIANTS (create many)
-        if (!empty($validated['variants'])) {
-            $rows = collect($validated['variants'])
-                ->map(fn($v) => [
-                    'attribute'  => $v['attribute'],
-                    'value'      => $v['value'],
-                    'price'      => $v['price'] ?? null,
-                ])->all();
-
-            $product->variants()->createMany($rows);
+        // SIZES with pivot data (price, stock)
+        if (!empty($validated['sizes'])) {
+            foreach ($validated['sizes'] as $size) {
+                $product->sizes()->attach($size['size_id'], [
+                    'price' => $size['price'],
+                    'stock' => $size['stock'],
+                ]);
+            }
         }
 
         // FAQs
@@ -112,7 +146,7 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'product created successfully',
-            'data'    => $product->load('images', 'variants', 'faqs', 'category'),
+            'data'    => $product->load('images', 'sizes', 'faqs', 'category'),
         ], 201);
     }
 
@@ -121,7 +155,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['images', 'variants', 'faqs', 'category'])->findOrFail($id);
+        $product = Product::with(['images', 'sizes', 'faqs', 'category'])->findOrFail($id);
 
         return response()->json([
             'message' => 'success',
@@ -131,19 +165,16 @@ class ProductController extends Controller
 
     /**
      * Update the specified resource in storage.
-     *
-     * Strategy: replace variants if 'variants' is provided.
-     * (You also have standalone ProductVariant CRUD; both paths remain valid.)
      */
     public function update(Request $request, string $id)
     {
-        
         $validated = $request->validate([
-            'title'       => 'required',
-            'sub_title'   => 'required',
-            'video_url'   => 'nullable',
-            'description' => 'nullable',
-            'discount'    => 'nullable',
+            'title'             => 'required',
+            'short_description' => 'required',
+            'video_url'         => 'nullable',
+            'description'       => 'nullable',
+            'discount'          => 'nullable',
+            'status'            => 'required|in:in-stock,sold,prebook',
 
             // images
             'image'   => 'nullable|array',
@@ -157,14 +188,21 @@ class ProductController extends Controller
             'categories'               => 'nullable|array',
             'categories.*.category_id' => 'required|exists:categories,id',
 
-            // base price (still allowed)
-            'price' => 'nullable|numeric|min:0',
+            // base price
+            'price' => 'nullable|integer|min:0',
 
-            // VARIANTS (replace-on-update if provided)
-            'variants'                 => 'nullable|array',
-            'variants.*.attribute'     => 'required|string|max:50',
-            'variants.*.value'         => 'required|string|max:100',
-            'variants.*.price'         => 'nullable|integer|min:0',
+            // COLORS
+            'colors'              => 'nullable|array',
+            'colors.*.code'       => 'required|string',
+            'colors.*.name'       => 'nullable|string',
+            'colors.*.image'      => 'nullable|image|mimes:jpg,jpeg,png',
+            'colors.*.existing_image' => 'nullable|string', // for keeping existing images
+
+            // SIZES
+            'sizes'              => 'nullable|array',
+            'sizes.*.size_id'    => 'required|exists:sizes,id',
+            'sizes.*.price'      => 'required|integer|min:0',
+            'sizes.*.stock'      => 'required|integer|min:0',
 
             // FAQs
             'faqs'            => 'nullable|array',
@@ -172,19 +210,50 @@ class ProductController extends Controller
             'faqs.*.answer'   => 'required',
         ]);
 
-        $product = Product::with(['images', 'variants', 'faqs'])->findOrFail($id);
+        $product = Product::with(['images', 'sizes', 'faqs'])->findOrFail($id);
 
-        // update core fields
+        // Handle colors with images
+        $colorsData = [];
+        if ($request->has('colors') && !empty($validated['colors'])) {
+            foreach ($validated['colors'] as $index => $color) {
+                $colorItem = [
+                    'code' => $color['code'],
+                    'name' => $color['name'] ?? null,
+                ];
+
+                // Check if new image is uploaded
+                if (isset($color['image'])) {
+                    $imageName   = $color['image']->hashName();
+                    $destination = public_path('uploads/color_images');
+                    
+                    if (!file_exists($destination)) {
+                        mkdir($destination, 0755, true);
+                    }
+                    
+                    $color['image']->move($destination, $imageName);
+                    $colorItem['image'] = 'uploads/color_images/' . $imageName;
+                } elseif (isset($color['existing_image'])) {
+                    // Keep existing image
+                    $colorItem['image'] = $color['existing_image'];
+                }
+
+                $colorsData[] = $colorItem;
+            }
+        }
+
+        // Update core fields
         $product->update([
-            'title'       => $validated['title'],
-            'sub_title'   => $validated['sub_title'],
-            'video_url'   => $validated['video_url'] ?? null,
-            'description' => $validated['description'] ?? null,
-            'discount'    => $validated['discount'] ?? null,
-            'price'       => $request->price ?? null,
+            'title'             => $validated['title'],
+            'short_description' => $validated['short_description'],
+            'video_url'         => $validated['video_url'] ?? null,
+            'description'       => $validated['description'] ?? null,
+            'discount'          => $validated['discount'] ?? null,
+            'status'            => $validated['status'],
+            'price'             => $validated['price'] ?? null,
+            'colors'            => !empty($colorsData) ? $colorsData : null,
         ]);
-        
-        // image deletions
+
+        // Image deletions
         if (!empty($validated['deleted_images'])) {
             foreach ($validated['deleted_images'] as $imageId) {
                 $image = $product->images()->find($imageId);
@@ -198,13 +267,13 @@ class ProductController extends Controller
             }
         }
 
-        // new images
+        // New images
         if ($request->hasFile('image')) {
             foreach ($request->file('image') as $image) {
                 $imageName   = $image->hashName();
                 $destination = public_path('uploads/product_photos');
                 $image->move($destination, $imageName);
-                $product->images()->create(['image' => 'uploads/product_photos/'.$imageName]);
+                $product->images()->create(['image' => 'uploads/product_photos/' . $imageName]);
             }
         }
 
@@ -214,34 +283,36 @@ class ProductController extends Controller
             $product->category()->sync($categoryIds);
         }
 
-        // VARIANTS — replace all if provided
-        if ($request->has('variants')) {
-            $product->variants()->delete();
-            if (!empty($validated['variants'])) {
-                $rows = collect($validated['variants'])
-                    ->map(fn($v) => [
-                        'attribute'  => $v['attribute'],
-                        'value'      => $v['value'],
-                        'price'      => $v['price'] ?? null,
-                    ])->all();
-                $product->variants()->createMany($rows);
+        // SIZES — sync with pivot data
+        if ($request->has('sizes')) {
+            $sizesData = [];
+            if (!empty($validated['sizes'])) {
+                foreach ($validated['sizes'] as $size) {
+                    $sizesData[$size['size_id']] = [
+                        'price' => $size['price'],
+                        'stock' => $size['stock'],
+                    ];
+                }
             }
+            $product->sizes()->sync($sizesData);
         }
 
         // FAQs
-        $product->faqs()->delete();
-        if (!empty($validated['faqs'])) {
-            foreach ($validated['faqs'] as $faq) {
-                $product->faqs()->create([
-                    'question' => $faq['question'],
-                    'answer'   => $faq['answer'],
-                ]);
+        if ($request->has('faqs')) {
+            $product->faqs()->delete();
+            if (!empty($validated['faqs'])) {
+                foreach ($validated['faqs'] as $faq) {
+                    $product->faqs()->create([
+                        'question' => $faq['question'],
+                        'answer'   => $faq['answer'],
+                    ]);
+                }
             }
         }
 
         return response()->json([
             'message' => 'Product updated successfully',
-            'data'    => $product->fresh()->load('images', 'variants', 'faqs', 'category'),
+            'data'    => $product->fresh()->load('images', 'sizes', 'faqs', 'category'),
         ]);
     }
 
@@ -250,9 +321,9 @@ class ProductController extends Controller
      */
     public function destroy(string $id)
     {
-        $product = Product::with(['images', 'variants', 'faqs', 'category'])->findOrFail($id);
+        $product = Product::with(['images', 'sizes', 'faqs', 'category'])->findOrFail($id);
 
-        // delete image files + rows
+        // Delete image files + rows
         foreach ($product->images as $image) {
             $path = public_path($image->image);
             if (file_exists($path)) {
@@ -261,12 +332,24 @@ class ProductController extends Controller
             $image->delete();
         }
 
-        // detach/delete relations
+        // Delete color images if any
+        if ($product->colors) {
+            foreach ($product->colors as $color) {
+                if (isset($color['image'])) {
+                    $path = public_path($color['image']);
+                    if (file_exists($path)) {
+                        @unlink($path);
+                    }
+                }
+            }
+        }
+
+        // Detach/delete relations
         $product->faqs()->delete();
-        $product->variants()->delete();
+        $product->sizes()->detach();
         $product->category()->detach();
 
-        // delete product
+        // Delete product
         $product->delete();
 
         return response()->json([
@@ -274,15 +357,17 @@ class ProductController extends Controller
         ], 200);
     }
 
-    public function category_products ($id){
-       $product = Product::findOrFail($id);
-       $relatedProducts = Product::whereHas('category',function($q) use ($product){
-          $q->whereIn('categories.id',$product->category->pluck('id'));
-       })
-       ->with(['images', 'variants'])
-       ->where('id','!=', $product->id)
-       ->take(10)
-       ->get();
-       return response()->json($relatedProducts);
+    public function category_products($id)
+    {
+        $product = Product::findOrFail($id);
+        $relatedProducts = Product::whereHas('category', function ($q) use ($product) {
+            $q->whereIn('categories.id', $product->category->pluck('id'));
+        })
+            ->with(['images', 'sizes'])
+            ->where('id', '!=', $product->id)
+            ->take(10)
+            ->get();
+            
+        return response()->json($relatedProducts);
     }
 }

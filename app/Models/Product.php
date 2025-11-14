@@ -6,23 +6,32 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
+
+    protected $casts = [
+        'colors' => 'array',
+    ];
+
     protected $guarded = [];
 
-    public function images(){
-       return $this->hasMany(ProductImage::class);
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class);
     }
 
-    public function sizes(){
+    public function sizes()
+    {
         return $this->belongsToMany(Size::class, 'product_sizes')
-        ->withPivot('price')
-        ->withTimestamps();
+            ->withPivot('price')
+            ->withTimestamps();
     }
 
-    public function faqs (){
+    public function faqs()
+    {
         return $this->hasMany(productFaq::class);
     }
 
-    public function category (){
+    public function category()
+    {
         return $this->belongsToMany(Category::class);
     }
 
