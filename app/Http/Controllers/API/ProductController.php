@@ -56,7 +56,6 @@ class ProductController extends Controller
             // COLORS with color codes and images
             'colors'              => 'nullable|array',
             'colors.*.code'       => 'required|string',  // hex code like #FF5733
-            'colors.*.name'       => 'nullable|string',   // optional color name
             'colors.*.image'      => 'nullable|image|mimes:jpg,jpeg,png',
 
             // SIZES with prices and stock
@@ -76,7 +75,6 @@ class ProductController extends Controller
             foreach ($validated['colors'] as $index => $color) {
                 $colorItem = [
                     'code' => $color['code'],
-                    'name' => $color['name'] ?? null,
                 ];
 
                 // Handle color image if provided
@@ -194,7 +192,6 @@ class ProductController extends Controller
             // COLORS
             'colors'              => 'nullable|array',
             'colors.*.code'       => 'required|string',
-            'colors.*.name'       => 'nullable|string',
             'colors.*.image'      => 'nullable|image|mimes:jpg,jpeg,png',
             'colors.*.existing_image' => 'nullable|string', // for keeping existing images
 
@@ -218,7 +215,6 @@ class ProductController extends Controller
             foreach ($validated['colors'] as $index => $color) {
                 $colorItem = [
                     'code' => $color['code'],
-                    'name' => $color['name'] ?? null,
                 ];
 
                 // Check if new image is uploaded
