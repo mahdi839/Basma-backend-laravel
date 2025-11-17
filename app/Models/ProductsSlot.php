@@ -10,7 +10,5 @@ class ProductsSlot extends Model
     
     public function slotDetails (){
         return $this->hasMany(SlotDetail::class,'slot_id');
-    }
- 
-    
+    } 
 }

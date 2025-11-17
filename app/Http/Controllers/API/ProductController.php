@@ -281,16 +281,18 @@ class ProductController extends Controller
 
         // SIZES — sync with pivot data
         if ($request->has('sizes')) {
+            $sizes = $validated['sizes']??[];
             $sizesData = [];
-            if (!empty($validated['sizes'])) {
-                foreach ($validated['sizes'] as $size) {
+            
+                foreach ($sizes as $size) {
                     $sizesData[$size['size_id']] = [
                         'price' => $size['price'],
                         'stock' => $size['stock'],
                     ];
                 }
-            }
             $product->sizes()->sync($sizesData);
+        }else{
+            $product->sizes()->sync([]);
         }
 
         // FAQs
@@ -304,6 +306,8 @@ class ProductController extends Controller
                     ]);
                 }
             }
+        }else{
+            $product->faqs()->delete();
         }
 
         return response()->json([
