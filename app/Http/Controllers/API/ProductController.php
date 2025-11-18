@@ -15,6 +15,7 @@ class ProductController extends Controller
     {
         $slug = $request->query('slug', '');
         $search = $request->search;
+        $status = $request->query('status','');
         $allProducts = Product::with(['images', 'sizes', 'faqs', 'category'])
             ->when($slug, function ($q) use ($slug) {
                 $q->whereHas('category', function ($query) use ($slug) {
@@ -23,6 +24,9 @@ class ProductController extends Controller
             })
             ->when($search && strlen($search) >= 3, function ($q) use ($search) {
                 $q->where('title', 'LIKE', "%{$search}%");
+            })
+             ->when($status, function ($q) use ($status) {
+                $q->where('status', $status);
             })
             ->get();
 
