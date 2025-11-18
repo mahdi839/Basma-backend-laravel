@@ -14,12 +14,15 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $slug = $request->query('slug', '');
-
+        $search = $request->search;
         $allProducts = Product::with(['images', 'sizes', 'faqs', 'category'])
             ->when($slug, function ($q) use ($slug) {
                 $q->whereHas('category', function ($query) use ($slug) {
                     $query->where('slug', $slug);
                 });
+            })
+            ->when($search && strlen($search) >= 3, function ($q) use ($search) {
+                $q->where('title', 'LIKE', "%{$search}%");
             })
             ->get();
 
@@ -81,12 +84,12 @@ class ProductController extends Controller
                 if (isset($color['image'])) {
                     $imageName   = $color['image']->hashName();
                     $destination = public_path('uploads/color_images');
-                    
+
                     // Create directory if not exists
                     if (!file_exists($destination)) {
                         mkdir($destination, 0755, true);
                     }
-                    
+
                     $color['image']->move($destination, $imageName);
                     $colorItem['image'] = 'uploads/color_images/' . $imageName;
                 }
@@ -221,11 +224,11 @@ class ProductController extends Controller
                 if (isset($color['image'])) {
                     $imageName   = $color['image']->hashName();
                     $destination = public_path('uploads/color_images');
-                    
+
                     if (!file_exists($destination)) {
                         mkdir($destination, 0755, true);
                     }
-                    
+
                     $color['image']->move($destination, $imageName);
                     $colorItem['image'] = 'uploads/color_images/' . $imageName;
                 } elseif (isset($color['existing_image'])) {
@@ -281,17 +284,17 @@ class ProductController extends Controller
 
         // SIZES — sync with pivot data
         if ($request->has('sizes')) {
-            $sizes = $validated['sizes']??[];
+            $sizes = $validated['sizes'] ?? [];
             $sizesData = [];
-            
-                foreach ($sizes as $size) {
-                    $sizesData[$size['size_id']] = [
-                        'price' => $size['price'],
-                        'stock' => $size['stock'],
-                    ];
-                }
+
+            foreach ($sizes as $size) {
+                $sizesData[$size['size_id']] = [
+                    'price' => $size['price'],
+                    'stock' => $size['stock'],
+                ];
+            }
             $product->sizes()->sync($sizesData);
-        }else{
+        } else {
             $product->sizes()->sync([]);
         }
 
@@ -306,7 +309,7 @@ class ProductController extends Controller
                     ]);
                 }
             }
-        }else{
+        } else {
             $product->faqs()->delete();
         }
 
@@ -367,7 +370,7 @@ class ProductController extends Controller
             ->where('id', '!=', $product->id)
             ->take(10)
             ->get();
-            
+
         return response()->json($relatedProducts);
     }
 }
