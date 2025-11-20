@@ -62,14 +62,14 @@ class ProductController extends Controller
 
             // COLORS with color codes and images
             'colors'              => 'nullable|array',
-            'colors.*.code'       => 'required|string',  // hex code like #FF5733
-            'colors.*.image'      => 'nullable|image|mimes:jpg,jpeg,png',
+            'colors.*.code'       => 'nullable|string',  // hex code like #FF5733
+            'colors.*.image'      => 'required|image|mimes:jpg,jpeg,png',
 
             // SIZES with prices and stock
             'sizes'              => 'nullable|array',
             'sizes.*.size_id'    => 'required|exists:sizes,id',
-            'sizes.*.price'      => 'required|integer|min:0',
-            'sizes.*.stock'      => 'required|integer|min:0',
+            'sizes.*.price'      => 'nullable|integer|min:0',
+            'sizes.*.stock'      => 'nullable|integer|min:0',
 
             // FAQs
             'question' => 'nullable|array',
@@ -198,15 +198,15 @@ class ProductController extends Controller
 
             // COLORS
             'colors'              => 'nullable|array',
-            'colors.*.code'       => 'required|string',
+            'colors.*.code'       => 'nullable|string',
             'colors.*.image'      => 'nullable|image|mimes:jpg,jpeg,png',
             'colors.*.existing_image' => 'nullable|string', // for keeping existing images
 
             // SIZES
             'sizes'              => 'nullable|array',
             'sizes.*.size_id'    => 'required|exists:sizes,id',
-            'sizes.*.price'      => 'required|integer|min:0',
-            'sizes.*.stock'      => 'required|integer|min:0',
+            'sizes.*.price'      => 'nullable|integer|min:0',
+            'sizes.*.stock'      => 'nullable|integer|min:0',
 
             // FAQs
             'faqs'            => 'nullable|array',
