@@ -15,7 +15,7 @@ class ProductController extends Controller
     {
         $slug = $request->query('slug', '');
         $search = $request->search;
-        $status = $request->query('status','');
+        $status = $request->query('status', '');
         $allProducts = Product::with(['images', 'sizes', 'faqs', 'category'])
             ->when($slug, function ($q) use ($slug) {
                 $q->whereHas('category', function ($query) use ($slug) {
@@ -25,7 +25,7 @@ class ProductController extends Controller
             ->when($search && strlen($search) >= 3, function ($q) use ($search) {
                 $q->where('title', 'LIKE', "%{$search}%");
             })
-             ->when($status, function ($q) use ($status) {
+            ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
             ->get();
@@ -81,6 +81,7 @@ class ProductController extends Controller
         if (!empty($validated['colors'])) {
             foreach ($validated['colors'] as $index => $color) {
                 $colorItem = [
+                    'id' => $index + 1,
                     'code' => $color['code'],
                 ];
 
@@ -218,24 +219,37 @@ class ProductController extends Controller
 
         // Handle colors with images
         $colorsData = [];
-        if ($request->has('colors') && !empty($validated['colors'])) {
+
+        if ($request->has('colors')) {
+
+            // get max existing id to continue increment
+            $existingMaxId = collect($product->colors ?? [])->max('id') ?? 0;
+
             foreach ($validated['colors'] as $index => $color) {
+
+                // If color has existing ID → keep it
+                if (isset($color['id'])) {
+                    $newId = $color['id'];
+                } else {
+                    // NEW color → assign new incremental ID
+                    $existingMaxId++;
+                    $newId = $existingMaxId;
+                }
+
                 $colorItem = [
+                    'id'   => $newId,
                     'code' => $color['code'],
                 ];
 
-                // Check if new image is uploaded
-                if (isset($color['image'])) {
-                    $imageName   = $color['image']->hashName();
+                // New image uploaded
+                if (!empty($color['image'])) {
+                    $imageName = $color['image']->hashName();
                     $destination = public_path('uploads/color_images');
-
-                    if (!file_exists($destination)) {
-                        mkdir($destination, 0755, true);
-                    }
+                    if (!file_exists($destination)) mkdir($destination, 0755, true);
 
                     $color['image']->move($destination, $imageName);
                     $colorItem['image'] = 'uploads/color_images/' . $imageName;
-                } elseif (isset($color['existing_image'])) {
+                } elseif (!empty($color['existing_image'])) {
                     // Keep existing image
                     $colorItem['image'] = $color['existing_image'];
                 }
