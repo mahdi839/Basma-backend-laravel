@@ -178,6 +178,7 @@ class OrderController extends Controller
             'cart.*.unitPrice' => 'required|numeric',
             'cart.*.qty' => 'required|integer',
             'cart.*.totalPrice' => 'required|numeric',
+            'cart.*.colorImage' => 'required',
             'total_amount' => 'required|numeric',
             // Facebook tracking data
             'fbp' => 'nullable|string',
@@ -215,10 +216,11 @@ class OrderController extends Controller
                     'order_id' => $order->id,
                     'product_id' => $item['id'],
                     'title' => $item['title'],
-                    'product_variant_id' => $item['size'],
+                    'selected_size' => $item['size'],
                     'unitPrice' => $item['unitPrice'],
                     'qty' => $item['qty'],
                     'totalPrice' => $item['totalPrice'],
+                    'colorImage'=>$item['colorImage'],
                 ]);
 
                 // Prepare Facebook data
