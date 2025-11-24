@@ -11,9 +11,9 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
-  public function selectedVariant()
+  public function size()
 {
-    return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    return $this->belongsTo(Size::class, 'selected_size');
 }
 
 

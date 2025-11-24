@@ -35,7 +35,7 @@ class OrderController extends Controller
         $product_title = $request->query('product_title', '');
 
 
-        $orders = Order::with('orderItems.selectedVariant')
+        $orders = Order::with('orderItems.size')
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
@@ -174,7 +174,7 @@ class OrderController extends Controller
             'cart' => 'required|array',
             'cart.*.id' => 'required|integer',
             'cart.*.title' => 'required|string',
-            'cart.*.size' => 'nullable|string',
+            'cart.*.size' => 'nullable',
             'cart.*.unitPrice' => 'required|numeric',
             'cart.*.qty' => 'required|integer',
             'cart.*.totalPrice' => 'required|numeric',

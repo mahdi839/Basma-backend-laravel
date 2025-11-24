@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('title');
             $table->decimal('unitPrice', 10, 2);
             $table->integer('qty');
-            $table->integer('colorImage');
-            $table->string('selected_size')->nullable();
+            $table->string('colorImage');
+            $table->integer('selected_size')->nullable();
             $table->decimal('totalPrice', 10, 2);
             $table->timestamps();
         });
