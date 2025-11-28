@@ -40,6 +40,10 @@ Route::apiResource('categories', CategoryController::class)->only(['index', 'sho
 // products whos category is same
 Route::get('/category_products/{id}',[ProductController::class,'category_products']);
 
+// product search
+Route::get('/product-search', [ProductController::class, 'searchProducts']);
+
+
 // Frontend-specific endpoints
 Route::get('frontend/categories', [CategoryController::class, 'frontEndIndex']);
 Route::get('frontend/banner', [BannerController::class, 'frontEndIndex']);

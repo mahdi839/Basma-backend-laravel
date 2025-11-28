@@ -391,4 +391,26 @@ class ProductController extends Controller
 
         return response()->json($relatedProducts);
     }
+
+    public function searchProducts(Request $request)
+    {
+        $search = $request->query('q', '');
+
+        if (strlen($search) < 3) {
+            return response()->json([
+                'message' => 'Type at least 3 characters',
+                'data' => []
+            ], 200);
+        }
+
+        $products = Product::with(['images','sizes'])
+            ->where('title', 'LIKE', "%{$search}%")
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'message' => 'success',
+            'data' => $products
+        ], 200);
+    }
 }
