@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\API;
+
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\AbandonedCheckout;
@@ -10,10 +11,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use App\Services\FacebookConversionService;
 use Illuminate\Support\Facades\DB;
+
 class OrderController extends Controller
 {
 
-      protected $facebookService;
+    protected $facebookService;
 
     public function __construct(FacebookConversionService $facebookService)
     {
@@ -66,9 +68,9 @@ class OrderController extends Controller
                 });
             })
             ->paginate(10);
-       $orders->getCollection()->transform(function($order){
-            $orderCount = Order::where('phone',$order->phone)->count();
-            $order->customer_type = $orderCount > 1?'Repeat Customer':'New';
+        $orders->getCollection()->transform(function ($order) {
+            $orderCount = Order::where('phone', $order->phone)->count();
+            $order->customer_type = $orderCount > 1 ? 'Repeat Customer' : 'New';
             return $order;
         });
         return response()->json($orders);
@@ -138,7 +140,7 @@ class OrderController extends Controller
             fclose($file);
         };
 
-        return response()->stream($callback,200,$header);
+        return response()->stream($callback, 200, $header);
     }
 
     /**
@@ -146,19 +148,19 @@ class OrderController extends Controller
      */
     public function create()
     {
-        $products = Product::with('sizes')->select(['id','title','price'])->get();
-    
-      return response()->json([
-         'data' => [
-            'products' => $products,
-          ]
-      ]);
+        $products = Product::with('sizes')->select(['id', 'title', 'price'])->get();
+
+        return response()->json([
+            'data' => [
+                'products' => $products,
+            ]
+        ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-  
+
     public function store(Request $request)
     {
         // Validate request data
@@ -210,7 +212,7 @@ class OrderController extends Controller
             // Create order items
             $contentIds = [];
             $contents = [];
-            
+
             foreach ($request->cart as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -220,7 +222,7 @@ class OrderController extends Controller
                     'unitPrice' => $item['unitPrice'],
                     'qty' => $item['qty'],
                     'totalPrice' => $item['totalPrice'],
-                    'colorImage'=>$item['colorImage'],
+                    'colorImage' => $item['colorImage'],
                 ]);
 
                 // Prepare Facebook data
@@ -259,7 +261,6 @@ class OrderController extends Controller
                 'message' => 'Order created successfully',
                 'order_number' => $order->order_number
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -269,22 +270,30 @@ class OrderController extends Controller
         }
     }
 
-    public function order_status (Request $request,$id){
+    public function order_status(Request $request, $id)
+    {
         $order = Order::findOrFail($id);
         $order->update([
-            'status'=> $request->status,
+            'status' => $request->status,
         ]);
         return response()->json([
-            'message'=> 'Status Updated Successfully!'
+            'message' => 'Status Updated Successfully!'
         ]);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Order $order)
+    /**
+     * Display the specified resource.
+     */
+    public function show($id)
     {
-        //
+        $order = Order::with(['orderItems.size'])->findOrFail($id);
+
+        return response()->json([
+            'order' => $order
+        ]);
     }
 
     /**
