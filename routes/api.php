@@ -31,6 +31,10 @@ use App\Http\Controllers\ProductStockController;
 Route::post('signUp', [AuthController::class, 'signUp']);
 Route::post('logIn', [AuthController::class, 'logIn']);
 
+// shop page routes
+Route::get('/shop/products', [ProductController::class, 'shopProducts']);
+Route::get('/shop/filters', [ProductController::class, 'shopFilters']);
+
 // Products, Banners, Sizes, Categories (frontend only)
 Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 Route::apiResource('banners', BannerController::class)->only(['index', 'show']);

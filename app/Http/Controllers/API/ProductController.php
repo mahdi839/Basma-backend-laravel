@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Product;
+use App\Models\Size;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -411,6 +413,102 @@ class ProductController extends Controller
         return response()->json([
             'message' => 'success',
             'data' => $products
+        ], 200);
+    }
+
+     public function shopProducts(Request $request)
+    {
+        $page = $request->query('page', 1);
+        $perPage = 20;
+        $categories = $request->query('categories', []);
+        $sizes = $request->query('sizes', []);
+        $minPrice = $request->query('min_price');
+        $maxPrice = $request->query('max_price');
+        $search = $request->query('search', '');
+        $status = $request->query('status', '');
+
+        // Convert categories and sizes to arrays if they're strings
+        if (is_string($categories)) {
+            $categories = explode(',', $categories);
+        }
+        if (is_string($sizes)) {
+            $sizes = explode(',', $sizes);
+        }
+
+        $query = Product::with(['images', 'sizes', 'category'])
+            ->when(!empty($categories), function ($q) use ($categories) {
+                $q->whereHas('category', function ($query) use ($categories) {
+                    $query->whereIn('categories.id', $categories);
+                });
+            })
+            ->when(!empty($sizes), function ($q) use ($sizes) {
+                $q->whereHas('sizes', function ($query) use ($sizes) {
+                    $query->whereIn('sizes.id', $sizes);
+                });
+            })
+            ->when($minPrice !== null, function ($q) use ($minPrice) {
+                $q->where(function ($query) use ($minPrice) {
+                    $query->where('price', '>=', $minPrice)
+                          ->orWhereHas('sizes', function ($q) use ($minPrice) {
+                              $q->where('product_sizes.price', '>=', $minPrice);
+                          });
+                });
+            })
+            ->when($maxPrice !== null, function ($q) use ($maxPrice) {
+                $q->where(function ($query) use ($maxPrice) {
+                    $query->where('price', '<=', $maxPrice)
+                          ->orWhereHas('sizes', function ($q) use ($maxPrice) {
+                              $q->where('product_sizes.price', '<=', $maxPrice);
+                          });
+                });
+            })
+            ->when($search && strlen($search) >= 3, function ($q) use ($search) {
+                $q->where('title', 'LIKE', "%{$search}%");
+            })
+            ->when($status, function ($q) use ($status) {
+                $q->where('status', $status);
+            })
+            ->where('status', 'in-stock') // Only show in-stock products in shop
+            ->orderBy('created_at', 'desc');
+
+        $products = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'message' => 'success',
+            'data' => $products->items(),
+            'pagination' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+                'has_more' => $products->hasMorePages(),
+            ]
+        ], 200);
+    }
+
+    /**
+     * Get filter options for shop
+     */
+    public function shopFilters()
+    {
+        $categories = Category::select('id', 'name', 'slug')->get();
+        $sizes = Size::select('id', 'size')->get();
+        
+        $priceRange = Product::selectRaw('MIN(COALESCE(product_sizes.price, products.price)) as min_price, MAX(COALESCE(product_sizes.price, products.price)) as max_price')
+            ->leftJoin('product_sizes', 'products.id', '=', 'product_sizes.product_id')
+            ->where('status', 'in-stock')
+            ->first();
+
+        return response()->json([
+            'message' => 'success',
+            'data' => [
+                'categories' => $categories,
+                'sizes' => $sizes,
+                'price_range' => [
+                    'min' => (int)($priceRange->min_price ?? 0),
+                    'max' => (int)($priceRange->max_price ?? 1000),
+                ]
+            ]
         ], 200);
     }
 }
