@@ -13,7 +13,17 @@ class ProductsSlotController extends Controller
 {
     public function frontEndIndex()
     {
-        $home_category_products = Category::with(['products.images:id,product_id,image', 'products.sizes','banner.banner_images'])->where('home_category', 1)->orderBy('priority')->get();
+        $home_category_products = Category::with([
+            'products' => function ($q) {
+                $q->where('status', 'in-stock')
+                    ->with(['images:id,product_id,image', 'sizes']);
+            },
+            'banner.banner_images'
+        ])
+            ->where('home_category', 1)
+            ->orderBy('priority')
+            ->get();
+
         return response()->json($home_category_products);
     }
 
@@ -35,16 +45,18 @@ class ProductsSlotController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'slot_name' => 'required',
-            'priority' => 'required',
-            'product_id' => 'required',
-        ],
+        $request->validate(
+            [
+                'slot_name' => 'required',
+                'priority' => 'required',
+                'product_id' => 'required',
+            ],
             [
                 'slot_name.required' => 'Please provide a slot name.',
                 'priority.required' => 'Priority is required.',
                 'product_id.required' => 'Product name is required ',
-            ]);
+            ]
+        );
 
         $slot = ProductsSlot::create([
             'slot_name' => $request->slot_name,
@@ -66,7 +78,6 @@ class ProductsSlotController extends Controller
             'message' => 'Slot created successfully',
             'data' => $slot,
         ], 201);
-
     }
 
     public function edit($id)
@@ -81,16 +92,18 @@ class ProductsSlotController extends Controller
     public function update(Request $request, $id)
     {
 
-        $request->validate([
-            'slot_name' => 'required',
-            'priority' => 'required',
-            'product_id' => 'required',
-        ],
+        $request->validate(
+            [
+                'slot_name' => 'required',
+                'priority' => 'required',
+                'product_id' => 'required',
+            ],
             [
                 'slot_name.required' => 'Please provide a slot name.',
                 'priority.required' => 'Priority is required.',
                 'product_id.required' => 'Product name is required.',
-            ]);
+            ]
+        );
         $product_slot = ProductsSlot::with('slotDetails')->findOrFail($id);
         DB::transaction(function () use ($product_slot, $request) {
 
@@ -107,7 +120,6 @@ class ProductsSlotController extends Controller
                     ]);
                 }
             }
-
         });
         // Reload the updated relationship
         $product_slot->load('slotDetails');
@@ -116,7 +128,6 @@ class ProductsSlotController extends Controller
             'message' => 'Updated Successfully!',
             'data' => $product_slot,
         ]);
-
     }
 
     public function destroy($id)
