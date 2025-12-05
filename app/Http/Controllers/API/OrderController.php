@@ -199,6 +199,7 @@ class OrderController extends Controller
                 'order_number' => 'ORD-' . date('Ymd') . '-' . strtoupper(uniqid()),
                 'name' => $request->name,
                 'phone' => $request->phone,
+                'user_id'=>$request->user_id??null,
                 'address' => $request->address,
                 'district' => $request->district,
                 'subtotal' => $subtotal,

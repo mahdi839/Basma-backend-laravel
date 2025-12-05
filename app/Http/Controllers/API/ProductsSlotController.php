@@ -16,7 +16,8 @@ class ProductsSlotController extends Controller
         $home_category_products = Category::with([
             'products' => function ($q) {
                 $q->whereIn('status', ['in-stock','prebook'])
-                    ->with(['images:id,product_id,image', 'sizes']);
+                    ->with(['images:id,product_id,image', 'sizes'])
+                    ->limit(15);
             },
             'banner.banner_images'
         ])
