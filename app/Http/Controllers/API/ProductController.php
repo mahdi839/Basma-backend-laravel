@@ -405,7 +405,7 @@ class ProductController extends Controller
             ], 200);
         }
 
-        $products = Product::with(['images','sizes'])
+        $products = Product::with(['images', 'sizes'])
             ->where('title', 'LIKE', "%{$search}%")
             ->limit(10)
             ->get();
@@ -416,7 +416,7 @@ class ProductController extends Controller
         ], 200);
     }
 
-     public function shopProducts(Request $request)
+    public function shopProducts(Request $request)
     {
         $page = $request->query('page', 1);
         $perPage = 20;
@@ -449,17 +449,17 @@ class ProductController extends Controller
             ->when($minPrice !== null, function ($q) use ($minPrice) {
                 $q->where(function ($query) use ($minPrice) {
                     $query->where('price', '>=', $minPrice)
-                          ->orWhereHas('sizes', function ($q) use ($minPrice) {
-                              $q->where('product_sizes.price', '>=', $minPrice);
-                          });
+                        ->orWhereHas('sizes', function ($q) use ($minPrice) {
+                            $q->where('product_sizes.price', '>=', $minPrice);
+                        });
                 });
             })
             ->when($maxPrice !== null, function ($q) use ($maxPrice) {
                 $q->where(function ($query) use ($maxPrice) {
                     $query->where('price', '<=', $maxPrice)
-                          ->orWhereHas('sizes', function ($q) use ($maxPrice) {
-                              $q->where('product_sizes.price', '<=', $maxPrice);
-                          });
+                        ->orWhereHas('sizes', function ($q) use ($maxPrice) {
+                            $q->where('product_sizes.price', '<=', $maxPrice);
+                        });
                 });
             })
             ->when($search && strlen($search) >= 3, function ($q) use ($search) {
@@ -468,7 +468,7 @@ class ProductController extends Controller
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
-            ->where('status', 'in-stock') // Only show in-stock products in shop
+            ->whereIn('status', ['in-stock', 'prebook']) // Only show in-stock products in shop
             ->orderBy('created_at', 'desc');
 
         $products = $query->paginate($perPage, ['*'], 'page', $page);
@@ -493,10 +493,10 @@ class ProductController extends Controller
     {
         $categories = Category::select('id', 'name', 'slug')->get();
         $sizes = Size::select('id', 'size')->get();
-        
+
         $priceRange = Product::selectRaw('MIN(COALESCE(product_sizes.price, products.price)) as min_price, MAX(COALESCE(product_sizes.price, products.price)) as max_price')
             ->leftJoin('product_sizes', 'products.id', '=', 'product_sizes.product_id')
-            ->where('status', 'in-stock')
+            ->whereIn('status', ['in-stock', 'prebook'])
             ->first();
 
         return response()->json([
