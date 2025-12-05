@@ -14,6 +14,7 @@ use App\Http\Controllers\API\ShippingCostController;
 use App\Http\Controllers\API\FooterSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
+use App\Http\Controllers\API\CustomerLeaderboardController;
 use App\Http\Controllers\API\DashboardSummaryController;
 use App\Http\Controllers\API\PathaoController;
 use App\Http\Controllers\Api\ProductVariantController;
@@ -42,7 +43,7 @@ Route::apiResource('sizes', SizeController::class)->only(['index', 'show']);
 Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
 
 // products whos category is same
-Route::get('/category_products/{id}',[ProductController::class,'category_products']);
+Route::get('/category_products/{id}', [ProductController::class, 'category_products']);
 
 // product search
 Route::get('/product-search', [ProductController::class, 'searchProducts']);
@@ -63,14 +64,26 @@ Route::get('social-links-first', [SocialLinkController::class, 'getFirst']);
 // About Us (frontend fetch)
 Route::get('about-us', [AboutUsController::class, 'index']);
 
- // Variants Crud
-    Route::apiResource('product-variants', ProductVariantController::class)->only(['index', 'show']);
+// Variants Crud
+Route::apiResource('product-variants', ProductVariantController::class)->only(['index', 'show']);
 
 //  Abandoned checkout system
-    Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 'store']);
-    Route::get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
+Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 'store']);
+Route::get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
 // In routes/api.php
-    Route::post('/mark-checkout-converted', [AbandonedCheckoutController::class, 'markAsConverted']);
+Route::post('/mark-checkout-converted', [AbandonedCheckoutController::class, 'markAsConverted']);
+
+// Customer Leaderboard Routes
+Route::prefix('customers')->group(function () {
+    // Get customer leaderboard with filters and pagination
+    Route::get('/leaderboard', [CustomerLeaderboardController::class, 'index']);
+
+    // Get customer statistics summary
+    Route::get('/statistics', [CustomerLeaderboardController::class, 'statistics']);
+
+    // Get specific customer details by phone
+    Route::get('/{phone}', [CustomerLeaderboardController::class, 'show']);
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -79,10 +92,10 @@ Route::get('about-us', [AboutUsController::class, 'index']);
 */
 
 Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
-   
-//    dashboard summery
+
+    //    dashboard summery
     Route::get('/dashboard/summary', [DashboardSummaryController::class, 'summary']);
-    
+
     // Auth
     Route::post('logOut', [AuthController::class, 'logOut']);
 
@@ -122,20 +135,18 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::delete('about-us/{id}', [AboutUsController::class, 'destroy']);
 
     // Variants Crud
-    Route::apiResource('product-variants', ProductVariantController::class)->only(['store', 'update','destroy']);
+    Route::apiResource('product-variants', ProductVariantController::class)->only(['store', 'update', 'destroy']);
 
     //    inventory management
     Route::apiResource('inventory-management', ProductStockController::class);
 
     // Create Pathao order for a specific order
     Route::post('/pathao/orders/{orderId}/create', [PathaoController::class, 'createOrder']);
-    
+
     // facebook server side tracking related controller 
     Route::get('/facebook-settings', [FacebookSettingController::class, 'index']);
     Route::post('/facebook-settings', [FacebookSettingController::class, 'store']);
     Route::post('/facebook-settings/test', [FacebookSettingController::class, 'testConnection']);
-
 });
 
 Route::get('/test-token', [PathaoController::class, 'testToken']);
-  
