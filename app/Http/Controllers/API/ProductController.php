@@ -388,6 +388,7 @@ class ProductController extends Controller
         })
             ->with(['images', 'sizes'])
             ->where('id', '!=', $product->id)
+            ->whereIn('status',['in-stock','prebook'])
             ->take(10)
             ->get();
 
@@ -419,7 +420,7 @@ class ProductController extends Controller
     public function shopProducts(Request $request)
     {
         $page = $request->query('page', 1);
-        $perPage = 20;
+        $perPage = 9;
         $categories = $request->query('categories', []);
         $sizes = $request->query('sizes', []);
         $minPrice = $request->query('min_price');
