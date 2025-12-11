@@ -17,7 +17,7 @@ class AuthController extends Controller
             [
                 'name' => 'required',
                 'email' => 'required|email|unique:users,email',
-                'password' => 'required',
+                'password' => 'required|min:6',
             ]
         );
 
@@ -25,8 +25,8 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'validation error',
-                'error' => $validateUser->errors()->all(),
-            ], 401);
+                'errors' => $validateUser->errors(),
+            ], 422);
         }
 
         $user = User::create([
@@ -35,12 +35,26 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // ✅ Assign default role (user)
+        $user->assignRole('user');
+
+        // Create token
+        $token = $user->createToken('api token')->plainTextToken;
+
+        // ✅ Return roles as array
         return response()->json([
             'status' => true,
             'message' => 'Sign Up successfully',
-            'user' => $user,
+            'token' => $token,
+            'token_type' => 'bearer',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->getRoleNames()->toArray(), // ✅ Convert to array
+                'permissions' => $user->getAllPermissions()->pluck('name')->toArray(),
+            ]
         ], 200);
-
     }
 
     public function logIn(Request $request)
@@ -54,44 +68,63 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'validation error',
-                'error' => $validateUser->errors()->all(),
-            ], 401);
+                'errors' => $validateUser->errors(),
+            ], 422);
         }
 
         // Find user by email
         $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => "email or password doesn't exist",
-                'error' => [],
+                'message' => "Email or password doesn't exist",
             ], 401);
         }
 
         // Create API token
         $token = $user->createToken('api token')->plainTextToken;
 
+        // ✅ Get user roles and permissions as arrays
         return response()->json([
             'status' => true,
             'message' => 'Logged In successfully',
             'token' => $token,
             'token_type' => 'bearer',
-            'role' => $user->role,
-            'user_id'=>$user->id??null
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->getRoleNames()->toArray(), // ✅ Convert to array
+                'permissions' => $user->getAllPermissions()->pluck('name')->toArray(),
+            ]
         ], 200);
     }
 
     public function logOut(Request $request)
     {
-
         $user = $request->user();
         $user->tokens()->delete();
 
         return response()->json([
             'status' => true,
             'message' => 'Logged Out successfully',
-            'user' => $user,
+        ], 200);
+    }
+
+    public function me(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'status' => true,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->getRoleNames()->toArray(),
+                'permissions' => $user->getAllPermissions()->pluck('name')->toArray(),
+            ]
         ], 200);
     }
 }

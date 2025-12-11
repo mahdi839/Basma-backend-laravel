@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
         ]);
         $this->call([
             UsersTableSeeder::class,
+            RoleSeeder::class,        // First: Create roles
+            PermissionSeeder::class,  // Second: Create permissions and assign to roles
         ]);
     }
 }
