@@ -162,6 +162,35 @@ class RolePermissionController extends Controller
         ], 201);
     }
 
+    // Delete user
+    public function deleteUser($id)
+    {
+        $user = User::findOrFail($id);
+        
+        // Prevent deleting yourself
+        if ($user->id === auth()->id()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You cannot delete yourself'
+            ], 403);
+        }
+
+        // Prevent deleting super-admin if you're not super-admin
+        if ($user->hasRole('super-admin') && !auth()->user()->hasRole('super-admin')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot delete super-admin user'
+            ], 403);
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'User deleted successfully'
+        ], 200);
+    }
+
     // Assign role to user
     public function assignRole(Request $request, $userId)
     {

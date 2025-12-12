@@ -107,6 +107,7 @@ Route::middleware(['auth:sanctum', 'role:super-admin'])->group(function () {
     // User Management
     Route::get('/users', [RolePermissionController::class, 'getUsers']);
     Route::post('/users', [RolePermissionController::class, 'createUser']);
+    Route::delete('/users/{id}', [RolePermissionController::class, 'deleteUser']);
     Route::post('/users/{userId}/assign-role', [RolePermissionController::class, 'assignRole']);
     Route::post('/users/{userId}/remove-role', [RolePermissionController::class, 'removeRole']);
 });
