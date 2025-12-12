@@ -118,58 +118,176 @@ Route::middleware(['auth:sanctum', 'role:super-admin'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'role:super-admin|admin'])->group(function () {
-    // Dashboard summary
-    Route::get('/dashboard/summary', [DashboardSummaryController::class, 'summary']);
+/*
+|--------------------------------------------------------------------------
+| Permission Protected Routes (Copy & Paste)
+|--------------------------------------------------------------------------
+*/
 
-    // Products, Sizes, Categories CRUD
-    Route::apiResource('products', ProductController::class)->only(['store', 'update', 'destroy']);
-    Route::apiResource('sizes', SizeController::class)->only(['store', 'update', 'destroy']);
-    Route::apiResource('categories', CategoryController::class)->only(['store', 'update', 'destroy']);
+// --------------------------
+// PRODUCTS PERMISSIONS
+// --------------------------
+Route::middleware(['permission:view products'])
+    ->get('products', [ProductController::class, 'index']);
 
-    // Shipping Costs
-    Route::apiResource('shipping-costs', ShippingCostController::class);
-    Route::get('shipping-costs-latest', [ShippingCostController::class, 'latest']);
+Route::middleware(['permission:create products'])
+    ->post('products', [ProductController::class, 'store']);
 
-    // Product Slots
-    Route::apiResource('product-slots', ProductsSlotController::class);
-    Route::get('slots_products/create', [ProductsSlotController::class, 'create']);
-    Route::get('product-slots/edit/{id}', [ProductsSlotController::class, 'edit']);
+Route::middleware(['permission:edit products'])
+    ->put('products/{id}', [ProductController::class, 'update']);
 
-    // Orders CRUD
-    Route::apiResource('orders', OrderController::class)->only(['index', 'create', 'update', 'destroy', 'show']);
-    Route::post('order_status/{id}', [OrderController::class, 'order_status']);
+Route::middleware(['permission:delete products'])
+    ->delete('products/{id}', [ProductController::class, 'destroy']);
 
-    // Show incomplete orders
-    Route::get('/admin/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
 
-    // Order download csv
-    Route::get('orders-download-csv', [OrderController::class, 'downloadCSV']);
+// --------------------------
+// CATEGORIES PERMISSIONS
+// --------------------------
+Route::middleware(['permission:create categories'])
+    ->post('categories', [CategoryController::class, 'store']);
 
-    // Banners CRUD
-    Route::apiResource('banners', BannerController::class)->only(['store', 'update', 'destroy']);
+Route::middleware(['permission:edit categories'])
+    ->put('categories/{id}', [CategoryController::class, 'update']);
 
-    // Social Links
-    Route::apiResource('social-links', SocialLinkController::class)->only(['store', 'update']);
+Route::middleware(['permission:delete categories'])
+    ->delete('categories/{id}', [CategoryController::class, 'destroy']);
 
-    // About Us CRUD
-    Route::post('about-us', [AboutUsController::class, 'store']);
-    Route::put('about-us/{id}', [AboutUsController::class, 'update']);
-    Route::delete('about-us/{id}', [AboutUsController::class, 'destroy']);
 
-    // Variants Crud
-    Route::apiResource('product-variants', ProductVariantController::class)->only(['store', 'update', 'destroy']);
+// --------------------------
+// SIZES PERMISSIONS
+// --------------------------
+Route::middleware(['permission:create sizes'])
+    ->post('sizes', [SizeController::class, 'store']);
 
-    // Inventory management
-    Route::apiResource('inventory-management', ProductStockController::class);
+Route::middleware(['permission:edit sizes'])
+    ->put('sizes/{id}', [SizeController::class, 'update']);
 
-    // Create Pathao order for a specific order
-    Route::post('/pathao/orders/{orderId}/create', [PathaoController::class, 'createOrder']);
+Route::middleware(['permission:delete sizes'])
+    ->delete('sizes/{id}', [SizeController::class, 'destroy']);
 
-    // Facebook server side tracking
-    Route::get('/facebook-settings', [FacebookSettingController::class, 'index']);
-    Route::post('/facebook-settings', [FacebookSettingController::class, 'store']);
-    Route::post('/facebook-settings/test', [FacebookSettingController::class, 'testConnection']);
+
+// --------------------------
+// ORDERS PERMISSIONS
+// --------------------------
+Route::middleware(['permission:view orders'])
+    ->get('orders', [OrderController::class, 'index']);
+
+Route::middleware(['permission:edit orders'])
+    ->put('orders/{id}', [OrderController::class, 'update']);
+
+Route::middleware(['permission:delete orders'])
+    ->delete('orders/{id}', [OrderController::class, 'destroy']);
+
+
+// Order status update
+Route::middleware(['permission:order_status'])
+    ->post('order_status/{id}', [OrderController::class, 'order_status']);
+
+
+// --------------------------
+// PRODUCT VARIANTS PERMISSIONS
+// --------------------------
+Route::middleware(['permission:create product variants'])
+    ->post('product-variants', [ProductVariantController::class, 'store']);
+
+Route::middleware(['permission:edit product variants'])
+    ->put('product-variants/{id}', [ProductVariantController::class, 'update']);
+
+Route::middleware(['permission:delete product variants'])
+    ->delete('product-variants/{id}', [ProductVariantController::class, 'destroy']);
+
+
+// --------------------------
+// INVENTORY PERMISSIONS
+// --------------------------
+Route::middleware(['permission:manage inventory'])
+    ->apiResource('inventory-management', ProductStockController::class)
+    ->only(['index', 'store', 'update', 'destroy']);
+
+
+// --------------------------
+// SHIPPING COSTS PERMISSIONS
+// --------------------------
+Route::middleware(['permission:manage shipping costs'])
+    ->apiResource('shipping-costs', ShippingCostController::class);
+
+Route::middleware(['permission:view shipping costs'])
+    ->get('shipping-costs-latest', [ShippingCostController::class, 'latest']);
+
+
+// --------------------------
+// BANNERS PERMISSIONS
+// --------------------------
+Route::middleware(['permission:create banners'])
+    ->post('banners', [BannerController::class, 'store']);
+
+Route::middleware(['permission:edit banners'])
+    ->put('banners/{id}', [BannerController::class, 'update']);
+
+Route::middleware(['permission:delete banners'])
+    ->delete('banners/{id}', [BannerController::class, 'destroy']);
+
+
+// --------------------------
+// SOCIAL LINKS PERMISSIONS
+// --------------------------
+Route::middleware(['permission:edit social links'])
+    ->post('social-links', [SocialLinkController::class, 'store']);
+
+Route::middleware(['permission:edit social links'])
+    ->put('social-links/{id}', [SocialLinkController::class, 'update']);
+
+
+// --------------------------
+// ABOUT US PERMISSIONS
+// --------------------------
+Route::middleware(['permission:create about us'])
+    ->post('about-us', [AboutUsController::class, 'store']);
+
+Route::middleware(['permission:edit about us'])
+    ->put('about-us/{id}', [AboutUsController::class, 'update']);
+
+Route::middleware(['permission:delete about us'])
+    ->delete('about-us/{id}', [AboutUsController::class, 'destroy']);
+
+
+// --------------------------
+// PATHAO PERMISSIONS
+// --------------------------
+Route::middleware(['permission:create pathao orders'])
+    ->post('/pathao/orders/{orderId}/create', [PathaoController::class, 'createOrder']);
+
+
+// --------------------------
+// FACEBOOK TRACKING PERMISSIONS
+// --------------------------
+Route::middleware(['permission:view facebook settings'])
+    ->get('/facebook-settings', [FacebookSettingController::class, 'index']);
+
+Route::middleware(['permission:edit facebook settings'])
+    ->post('/facebook-settings', [FacebookSettingController::class, 'store']);
+
+Route::middleware(['permission:test facebook settings'])
+    ->post('/facebook-settings/test', [FacebookSettingController::class, 'testConnection']);
+
+    // Customer Leaderboard Routes (Permission Protected Individually)
+Route::prefix('customers')->group(function () {
+
+    // Only users with 'view leaderboard' permission
+    Route::get('/leaderboard', [CustomerLeaderboardController::class, 'index'])
+        ->middleware(['auth:sanctum', 'permission:view leaderboard']);
+
+    // Only users with 'view statistics' permission
+    Route::get('/statistics', [CustomerLeaderboardController::class, 'statistics'])
+        ->middleware(['auth:sanctum', 'permission:view statistics']);
+
+    // Only users with 'view customer details' permission
+    Route::get('/{phone}', [CustomerLeaderboardController::class, 'show'])
+        ->middleware(['auth:sanctum', 'permission:view customer details']);
+
 });
 
-Route::get('/test-token', [PathaoController::class, 'testToken']);
+
+// Dashboard summary (Permission Protected)
+Route::middleware(['auth:sanctum', 'permission:view dashboard summary'])
+    ->get('/dashboard/summary', [DashboardSummaryController::class, 'summary']);

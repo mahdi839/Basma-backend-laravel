@@ -14,8 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'isAdmin' => \App\Http\Middleware\isAdmin::class,
-             'role' => \App\Http\Middleware\CheckRole::class,
-            'permission' => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
+            'role' => \App\Http\Middleware\CheckRole::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
         // ✅ Ensure CORS runs for API routes
         $middleware->api(prepend: [
