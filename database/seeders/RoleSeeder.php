@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class RoleSeeder extends Seeder
 {
@@ -14,31 +15,21 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
-        $admins = [
-            [
-                'name' => 'Mehedi',
-                'email' => 'hasanarefi56574@gmail.com',
-                'password' => '2443424434',
-            ],
-            [
-                'name' => 'Mehedi Admin',
-                'email' => 'mehedi@gmail.com',
-                'password' => 'mehedi@gmail.com',
-            ],
-        ];
+         // 1. Create roles if not exist
+        $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
+        Role::firstOrCreate(['name' => 'admin']);
+        Role::firstOrCreate(['name' => 'user']);
 
-        foreach ($admins as $admin) {
-            User::updateOrCreate(
-                ['email' => $admin['email']],
-                [
-                    'name' => $admin['name'],
-                    'password' => Hash::make($admin['password']), // hash plain text here
-                    'role' => 'admin',
-                    'remember_token' => Str::random(10),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]
-            );
-        }
+        // 2. Create Mehedi Hasan user
+        $mehedi = User::firstOrCreate(
+            ['email' => 'mehedi@example.com'], // Unique identifier
+            [
+                'name' => 'Mehedi Hasan',
+                'password' => Hash::make('password123'), // Change password later
+            ]
+        );
+
+        // 3. Assign super-admin role
+        $mehedi->assignRole($superAdminRole);
     }
 }
