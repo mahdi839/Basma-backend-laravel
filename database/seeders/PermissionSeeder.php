@@ -39,6 +39,11 @@ class PermissionSeeder extends Seeder
             'edit banners',
             'delete banners',
 
+            // leaderboard
+            'view leaderboard',
+            'view statistics',
+            'view customer details',
+
             // User management
             'view users',
             'create users',
@@ -61,7 +66,12 @@ class PermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            Permission::updateOrCreate(
+                [
+                    'name' => $permission,
+                ],
+                []
+            );
         }
 
         // ✅ Assign all permissions to super-admin
