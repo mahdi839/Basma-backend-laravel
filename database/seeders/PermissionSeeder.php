@@ -27,6 +27,7 @@ class PermissionSeeder extends Seeder
             'edit orders',
             'delete orders',
             'download orders',
+            'order show',
 
             // Category permissions
             'view categories',

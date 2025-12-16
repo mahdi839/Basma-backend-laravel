@@ -174,6 +174,8 @@ Route::middleware(['permission:view orders'])
 
 Route::middleware(['permission:edit orders'])
     ->put('orders/{id}', [OrderController::class, 'update']);
+Route::middleware(['permission:order show'])
+    ->get('orders/{id}', [OrderController::class, 'show']);
 
 Route::middleware(['permission:delete orders'])
     ->delete('orders/{id}', [OrderController::class, 'destroy']);

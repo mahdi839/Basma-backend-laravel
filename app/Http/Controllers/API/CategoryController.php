@@ -11,31 +11,38 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        
-        $categories = Category::paginate(20); // no caching
+
+        $categories =  Category::with('parent')
+            ->orderBy('priority')
+            ->paginate(20);
 
         return response()->json($categories);
     }
 
     public function frontEndIndex()
     {
-        $categories = Category::with('banner.banner_images')->get();
+        $categories =  $categories = Category::whereNull('parent_id')
+            ->with(['children' => function ($q) {
+                $q->orderBy('priority');
+            }])
+            ->orderBy('priority')
+            ->get();
         return response()->json($categories);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'home_category' => 'nullable|boolean',
-            'priority'      => 'nullable|integer|min:0',
+            'name'      => 'required|string|max:255',
+            'parent_id' => 'nullable|exists:categories,id',
+            'priority'  => 'nullable|integer|min:0',
         ]);
 
         $category = Category::create([
-            'name' => $request->name,
-            'slug' => Str::slug($request->name),
-            'home_category' => $request->home_category ?? false,
-            'priority'      => $request->priority ?? 0,
+            'name'      => $request->name,
+            'slug'      => Str::slug($request->name),
+            'parent_id' => $request->parent_id,
+            'priority'  => $request->priority ?? 0,
         ]);
         return response()->json($category, 201);
     }
@@ -51,16 +58,16 @@ class CategoryController extends Controller
         $category = Category::findOrFail($id);
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'home_category' => 'nullable|boolean',
-            'priority'      => 'nullable|integer|min:0',
+            'name'      => 'required|string|max:255',
+            'parent_id' => 'nullable|exists:categories,id|not_in:' . $id,
+            'priority'  => 'nullable|integer|min:0',
         ]);
 
         $category->update([
-            'name' => $request->name,
-            'slug' => Str::slug($request->name),
-            'home_category' => $request->home_category ?? false,
-            'priority'      => $request->priority ?? 0,
+            'name'      => $request->name,
+            'slug'      => Str::slug($request->name),
+            'parent_id' => $request->parent_id,
+            'priority'  => $request->priority ?? 0,
         ]);
         return response()->json($category);
     }
