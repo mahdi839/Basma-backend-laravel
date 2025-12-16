@@ -101,9 +101,9 @@ Route::middleware(['auth:sanctum', 'role:super-admin'])->group(function () {
     Route::post('/roles', [RolePermissionController::class, 'createRole']);
     Route::put('/roles/{id}', [RolePermissionController::class, 'updateRole']);
     Route::delete('/roles/{id}', [RolePermissionController::class, 'deleteRole']);
-    
+
     Route::get('/permissions', [RolePermissionController::class, 'getPermissions']);
-    
+
     // User Management
     Route::get('/users', [RolePermissionController::class, 'getUsers']);
     Route::post('/users', [RolePermissionController::class, 'createUser']);
@@ -177,6 +177,9 @@ Route::middleware(['permission:edit orders'])
 
 Route::middleware(['permission:delete orders'])
     ->delete('orders/{id}', [OrderController::class, 'destroy']);
+// Order download csv
+Route::middleware(['permission:download orders'])
+    ->get('orders-download-csv', [OrderController::class, 'downloadCSV']);
 
 
 // Order status update
@@ -270,7 +273,7 @@ Route::middleware(['permission:edit facebook settings'])
 Route::middleware(['permission:test facebook settings'])
     ->post('/facebook-settings/test', [FacebookSettingController::class, 'testConnection']);
 
-    // Customer Leaderboard Routes (Permission Protected Individually)
+// Customer Leaderboard Routes (Permission Protected Individually)
 Route::prefix('customers')->group(function () {
 
     // Only users with 'view leaderboard' permission
@@ -284,7 +287,6 @@ Route::prefix('customers')->group(function () {
     // Only users with 'view customer details' permission
     Route::get('/{phone}', [CustomerLeaderboardController::class, 'show'])
         ->middleware(['auth:sanctum', 'permission:view customer details']);
-
 });
 
 
