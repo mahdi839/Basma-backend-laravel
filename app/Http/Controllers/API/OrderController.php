@@ -86,7 +86,7 @@ class OrderController extends Controller
         $start_date = $request->query('start_date', '');
         $end_date = $request->query('end_date', '');
         $product_title = $request->query('product_title', '');
-        $orders = Order::with('orderItems')
+        $query = Order::with('orderItems.size')
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
@@ -115,7 +115,8 @@ class OrderController extends Controller
                     $query->where('name', 'LIKE', "%$search%")
                         ->orWhere('phone', 'LIKE', "%$search%");
                 });
-            })->get();
+            });
+
 
         $date = Date('Y-m-d');
         $fileName = "orders_{$date}.csv";
@@ -124,22 +125,68 @@ class OrderController extends Controller
             'content-type' => 'text/csv',
             'content-disposition' => "attachment; filename={$fileName}",
         ];
-
-        $columns = ["Customer Info", "Ordered Products", "Order Summery", "status"];
-        $callback = function () use ($orders, $columns) {
+        $callback = function () use ($query) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
 
-            foreach ($orders as $order) {
-                $customer_info = "Name: {$order->name}| Phone: {$order->phone}| District: {$order->district}";
-                $ordered_products = $order->orderItems->map(fn($item) => "Product Name: {$item->title} (Qty: {$item->qty})")->implode("; ");
-                $orderSummary = "Total: {$order->total}";
-                $status = $order->status;
-                fputcsv($file, [$customer_info, $ordered_products, $orderSummary, $status]);
-            }
+            // CSV header
+            fputcsv($file, [
+                "Order Date",
+                "Customer Name",
+                "Phone",
+                "Address",
+                "District",
+                "Customer Type",
+                "Product Title",
+                "Quantity",
+                "Unit Price",
+                "Total Price",
+                "Variant",
+                "Size",
+                "Color Image",
+                "Shipping Cost",
+                "Payment Method",
+                "Order Total",
+                "Status"
+            ]);
+
+            $query->chunk(100, function ($orders) use ($file) {
+
+                foreach ($orders as $order) {
+
+                    $orderCount = \App\Models\Order::where('phone', $order->phone)->count();
+                    $customerType = $orderCount > 1 ? 'Repeat Customer' : 'New';
+
+                    foreach ($order->orderItems as $item) {
+
+                        $variant = $item->selected_variant
+                            ? ($item->selected_variant['attribute'] . ': ' . $item->selected_variant['value'])
+                            : '';
+
+                        fputcsv($file, [
+                            $order->created_at,
+                            $order->name,
+                            $order->phone,
+                            $order->address,
+                            $order->district,
+                            $customerType,
+                            $item->title,
+                            $item->qty,
+                            $item->unitPrice,
+                            $item->totalPrice,
+                            $variant,
+                            optional($item->size)->size,
+                            $item->colorImage,
+                            $order->shipping_cost,
+                            $order->payment_method,
+                            $order->total,
+                            $order->status,
+                        ]);
+                    }
+                }
+            });
+
             fclose($file);
         };
-
         return response()->stream($callback, 200, $header);
     }
 
@@ -199,7 +246,7 @@ class OrderController extends Controller
                 'order_number' => 'ORD-' . date('Ymd') . '-' . strtoupper(uniqid()),
                 'name' => $request->name,
                 'phone' => $request->phone,
-                'user_id'=>$request->user_id??null,
+                'user_id' => $request->user_id ?? null,
                 'address' => $request->address,
                 'district' => $request->district,
                 'subtotal' => $subtotal,
