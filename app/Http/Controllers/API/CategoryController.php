@@ -18,6 +18,13 @@ class CategoryController extends Controller
         return response()->json($categories);
     }
 
+     public function product_add_category()
+    {
+        return $categories = Category::get(['id','name']);
+   
+        return response()->json($categories);
+    }
+
     public function frontEndIndex()
     {
         // Get all root categories with ALL nested children recursively
