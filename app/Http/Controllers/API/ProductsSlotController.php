@@ -11,21 +11,40 @@ use Illuminate\Support\Facades\DB;
 
 class ProductsSlotController extends Controller
 {
-    public function frontEndIndex()
+    public function frontEndIndex(Request $request)
     {
-        $home_category_products = Category::with([
+        $perPage = 4; // 4 categories per page
+        $page = $request->input('page', 1);
+
+        $home_category_products = Category::whereHas('products', function ($q) {
+            $q->whereIn('status', ['in-stock', 'prebook']);
+        })->with([
             'products' => function ($q) {
-                $q->whereIn('status', ['in-stock','prebook'])
+                $q->whereIn('status', ['in-stock', 'prebook'])
                     ->with(['images:id,product_id,image', 'sizes'])
                     ->limit(15);
             },
             'banner.banner_images'
         ])
             ->where('home_category', 1)
-            ->orderBy('priority')
+            ->orderBy('priority');
+
+        // Get total count for has_more check
+        $total = $home_category_products->count();
+
+        // Apply pagination
+        $categories = $home_category_products
+            ->skip(($page - 1) * $perPage)
+            ->take($perPage)
             ->get();
 
-        return response()->json($home_category_products);
+        return response()->json([
+            'data' => $categories,
+            'current_page' => (int) $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'has_more' => ($page * $perPage) < $total
+        ]);
     }
 
     public function index()
