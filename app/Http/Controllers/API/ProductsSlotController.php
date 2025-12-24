@@ -14,33 +14,44 @@ class ProductsSlotController extends Controller
     public function frontEndIndex(Request $request)
     {
         $perPage = 4; // 4 categories per page
-        $page = $request->input('page', 1);
+        $page = (int) $request->input('page', 1);
 
-        $home_category_products = Category::whereHas('products', function ($q) {
-            $q->whereIn('status', ['in-stock', 'prebook']);
-        })->with([
-            'products' => function ($q) {
-                $q->whereIn('status', ['in-stock', 'prebook'])
-                    ->with(['images:id,product_id,image', 'sizes'])
-                    ->limit(15);
-            },
-            'banner.banner_images'
-        ])
-            ->where('home_category', 1)
+        // Base query (no execution yet)
+        $home_category_products = Category::where('home_category', 1)
+            ->whereHas('products', function ($q) {
+                $q->whereIn('status', ['in-stock', 'prebook']);
+            })
+            ->with([
+                'products' => function ($q) {
+                    $q->whereIn('status', ['in-stock', 'prebook'])
+                        ->with([
+                            'images:id,product_id,image',
+                            'sizes'
+                        ])
+                        ->orderBy('id', 'desc'); // optional but recommended
+                },
+                'banner.banner_images'
+            ])
+            ->select('id', 'name', 'slug', 'priority')
             ->orderBy('priority');
 
-        // Get total count for has_more check
-        $total = $home_category_products->count();
+        // Total categories count (for has_more)
+        $total = (clone $home_category_products)->count();
 
-        // Apply pagination
+        // Paginate categories
         $categories = $home_category_products
             ->skip(($page - 1) * $perPage)
             ->take($perPage)
             ->get();
 
+        // LIMIT products in PHP (FAST & SAFE)
+        $categories->each(function ($category) {
+            $category->products = $category->products->take(15)->values();
+        });
+
         return response()->json([
             'data' => $categories,
-            'current_page' => (int) $page,
+            'current_page' => $page,
             'per_page' => $perPage,
             'total' => $total,
             'has_more' => ($page * $perPage) < $total
