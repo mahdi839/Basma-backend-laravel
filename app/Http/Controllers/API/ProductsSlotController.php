@@ -24,6 +24,17 @@ class ProductsSlotController extends Controller
             ->with([
                 'products' => function ($q) {
                     $q->whereIn('status', ['in-stock', 'prebook'])
+                        ->select([
+                            'products.id',
+                            'products.title',
+                            'products.short_description',
+                            'products.description',
+                            'products.price',
+                            'products.video_url',
+                            'products.discount',
+                            'products.status',
+                            'products.colors',
+                        ])
                         ->with([
                             'images:id,product_id,image',
                             'sizes'
