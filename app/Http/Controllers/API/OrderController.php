@@ -36,7 +36,6 @@ class OrderController extends Controller
         $end_date = $request->query('end_date', '');
         $product_title = $request->query('product_title', '');
 
-
         $orders = Order::with('orderItems.size')
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
@@ -270,7 +269,7 @@ class OrderController extends Controller
                     'unitPrice' => $item['unitPrice'],
                     'qty' => $item['qty'],
                     'totalPrice' => $item['totalPrice'],
-                    'colorImage' => $item['colorImage']??"",
+                    'colorImage' => $item['colorImage'] ?? "",
                 ]);
 
                 // Prepare Facebook data
@@ -360,7 +359,40 @@ class OrderController extends Controller
         $start_date = $request->query('start_date', '');
         $end_date = $request->query('end_date', '');
 
-        $orders = Order::with(['orderItems.size'])
+        $orders = Order::query()
+            ->select([
+                'id',
+                'order_number',
+                'user_id',
+                'status',
+                'created_at',
+                'total'
+            ])
+            ->with([
+                'orderItems' => function ($q) {
+                    $q->select([
+                        'id',
+                        'order_id',   // REQUIRED
+                        'product_id', // REQUIRED
+                        'qty',
+                        'unitPrice',
+                        'title',
+                        'totalPrice'
+                    ]);
+                },
+                'orderItems.product' => function ($q) {
+                    $q->select([
+                        'id',
+                    ]);
+                },
+                'orderItems.product.images' => function ($q) {
+                    $q->select([
+                        'id',
+                        'product_id', // REQUIRED
+                        'image',
+                    ]);
+                },
+            ])
             ->where('user_id', $user->id)
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
