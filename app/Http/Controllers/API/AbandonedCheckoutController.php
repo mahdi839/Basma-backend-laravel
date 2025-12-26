@@ -61,6 +61,12 @@ class AbandonedCheckoutController extends Controller
     public function index(Request $request)
     {
         $checkouts = AbandonedCheckout::where('is_recovered', false)
+            ->when($request->filled('start_date'),function ($q)use ($request){
+                $q->whereDate('created_at','>=',$request->start_date);
+            })
+            ->when($request->filled('end_date'),function ($q)use ($request){
+                $q->whereDate('created_at','<=',$request->end_date);
+            })
             ->latest()
             ->paginate(20);
 
