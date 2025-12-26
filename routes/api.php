@@ -88,6 +88,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Check auth status
     Route::get('me', [AuthController::class, 'me']);
     Route::post('logOut', [AuthController::class, 'logOut']);
+    // User's order history
+    Route::get('/my-orders', [OrderController::class, 'myOrders']);
+    Route::get('/my-orders/{orderNumber}', [OrderController::class, 'myOrderDetails']);
 });
 
 /*

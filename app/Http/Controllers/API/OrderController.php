@@ -270,7 +270,7 @@ class OrderController extends Controller
                     'unitPrice' => $item['unitPrice'],
                     'qty' => $item['qty'],
                     'totalPrice' => $item['totalPrice'],
-                    'colorImage' => $item['colorImage'],
+                    'colorImage' => $item['colorImage']??"",
                 ]);
 
                 // Prepare Facebook data
@@ -342,6 +342,74 @@ class OrderController extends Controller
         return response()->json([
             'order' => $order
         ]);
+    }
+
+
+    public function myOrders(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $status = $request->query('status', '');
+        $start_date = $request->query('start_date', '');
+        $end_date = $request->query('end_date', '');
+
+        $orders = Order::with(['orderItems.size'])
+            ->where('user_id', $user->id)
+            ->when($status, function ($q) use ($status) {
+                $q->where('status', $status);
+            })
+            ->when($start_date, function ($q) use ($start_date) {
+                $q->where('created_at', '>=', $start_date);
+            })
+            ->when($end_date, function ($q) use ($end_date) {
+                $q->where('created_at', '<=', $end_date);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return response()->json([
+            'status' => true,
+            'data' => $orders
+        ], 200);
+    }
+
+    /**
+     * Get single order details for authenticated user
+     */
+    public function myOrderDetails($orderNumber)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $order = Order::with(['orderItems.size'])
+            ->where('order_number', $orderNumber)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Order not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $order
+        ], 200);
     }
 
     /**
