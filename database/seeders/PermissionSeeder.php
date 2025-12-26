@@ -28,6 +28,7 @@ class PermissionSeeder extends Seeder
             'delete orders',
             'download orders',
             'order show',
+            'incomplete_order',
 
             // Category permissions
             'view categories',

@@ -189,6 +189,12 @@ Route::middleware(['permission:download orders'])
 Route::middleware(['permission:order_status'])
     ->post('order_status/{id}', [OrderController::class, 'order_status']);
 
+// Incomplete order tracking 
+Route::middleware(['permission:incomplete_order'])->get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
+Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 'store']);
+// Route::get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
+Route::post('/mark-checkout-converted', [AbandonedCheckoutController::class, 'markAsConverted']);
+
 
 // --------------------------
 // PRODUCT VARIANTS PERMISSIONS

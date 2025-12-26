@@ -29,7 +29,7 @@ class AbandonedCheckoutController extends Controller
         // Check if abandoned checkout already exists for this phone
         $existingCheckout = AbandonedCheckout::where('phone', $phone)
             ->where('is_recovered', false)
-            ->orWhere('session_id',$sessionId) // Only check non-converted checkouts
+            ->orWhere('session_id', $sessionId) // Only check non-converted checkouts
             ->first();
 
         if ($existingCheckout) {
@@ -51,7 +51,7 @@ class AbandonedCheckoutController extends Controller
             'name' => $data['name'] ?? null,
             'address' => $data['address'] ?? null,
             'session_id' => $sessionId,
-            'user_id' => Auth::guard('sanctum')->check()?Auth::guard('sanctum')->id():null,
+            'user_id' => Auth::guard('sanctum')->check() ? Auth::guard('sanctum')->id() : null,
             'is_recovered' => false,
         ]);
 
@@ -60,21 +60,25 @@ class AbandonedCheckoutController extends Controller
 
     public function index(Request $request)
     {
-        return AbandonedCheckout::where('is_recovered', false)
+        $checkouts = AbandonedCheckout::where('is_recovered', false)
             ->latest()
-            ->get();
+            ->paginate(20);
+
+        return response()->json([
+            'data' => $checkouts,
+        ]);
     }
 
     // Add to AbandonedCheckoutController
-public function markAsConverted(Request $request)
-{
-    $request->validate([
-        'phone' => 'required|string',
-    ]);
+    public function markAsConverted(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+        ]);
 
-    AbandonedCheckout::where('phone', $request->phone)
-        ->update(['is_recovered' => true]);
+        AbandonedCheckout::where('phone', $request->phone)
+            ->update(['is_recovered' => true]);
 
-    return response()->json(['message' => 'Checkout marked as converted.']);
- }
+        return response()->json(['message' => 'Checkout marked as converted.']);
+    }
 }
