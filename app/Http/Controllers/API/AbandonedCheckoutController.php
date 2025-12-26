@@ -73,10 +73,10 @@ class AbandonedCheckoutController extends Controller
     public function markAsConverted(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'session_id' => 'required',
         ]);
 
-        AbandonedCheckout::where('phone', $request->phone)
+        AbandonedCheckout::where('session_id', $request->session_id)
             ->update(['is_recovered' => true]);
 
         return response()->json(['message' => 'Checkout marked as converted.']);
