@@ -25,8 +25,12 @@ class ProductController extends Controller
                 });
             })
             ->when($search && strlen($search) >= 3, function ($q) use ($search) {
-                $q->where('title', 'LIKE', "%{$search}%");
+                $q->where(function ($query) use ($search) {
+                    $query->where('title', 'LIKE', "%{$search}%")
+                        ->orWhere('sku', 'LIKE', "%{$search}%");
+                });
             })
+
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
@@ -388,7 +392,7 @@ class ProductController extends Controller
         })
             ->with(['images', 'sizes'])
             ->where('id', '!=', $product->id)
-            ->whereIn('status',['in-stock','prebook'])
+            ->whereIn('status', ['in-stock', 'prebook'])
             ->take(10)
             ->get();
 
