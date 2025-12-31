@@ -12,72 +12,71 @@ use Illuminate\Support\Facades\Cache;
 
 class ProductsSlotController extends Controller
 {
-    public function frontEndIndex(Request $request)
-    {
-        $perPage = 4;
-        $page = (int) $request->input('page', 1);
+   public function frontEndIndex(Request $request) 
+{
+    $perPage = 4;
+    $page = (int) $request->input('page', 1);
+    
+    // Create cache key
+    $cacheKey = "page_{$page}";
+    
+    // Cache with tags - now you can flush all pages at once
+    $result = Cache::tags(['home_categories'])->remember($cacheKey, 3600, function () use ($page, $perPage) {
+        // Base query
+        $home_category_products = Category::where('home_category', 1)
+            ->whereHas('products', function ($q) {
+                $q->whereIn('status', ['in-stock', 'prebook']);
+            })
+            ->with([
+                'products' => function ($q) {
+                    $q->whereIn('status', ['in-stock', 'prebook'])
+                        ->select([
+                            'products.id',
+                            'products.title',
+                            'products.short_description',
+                            'products.description',
+                            'products.price',
+                            'products.video_url',
+                            'products.discount',
+                            'products.status',
+                            'products.colors',
+                        ])
+                        ->with([
+                            'images:id,product_id,image',
+                            'sizes'
+                        ])
+                        ->orderBy('id', 'desc');
+                },
+                'banner.banner_images'
+            ])
+            ->select('id', 'name', 'slug', 'priority')
+            ->orderBy('priority');
 
-        // Create a unique cache key for each page
-        $cacheKey = "home_categories_page_{$page}";
+        // Total categories count
+        $total = (clone $home_category_products)->count();
 
-        // Cache for 1 hour (3600 seconds)
-        $result = Cache::remember($cacheKey, 3600, function () use ($page, $perPage) {
+        // Paginate categories
+        $categories = $home_category_products
+            ->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get();
 
-            // Base query
-            $home_category_products = Category::where('home_category', 1)
-                ->whereHas('products', function ($q) {
-                    $q->whereIn('status', ['in-stock', 'prebook']);
-                })
-                ->with([
-                    'products' => function ($q) {
-                        $q->whereIn('status', ['in-stock', 'prebook'])
-                            ->select([
-                                'products.id',
-                                'products.title',
-                                'products.short_description',
-                                'products.description',
-                                'products.price',
-                                'products.video_url',
-                                'products.discount',
-                                'products.status',
-                                'products.colors',
-                            ])
-                            ->with([
-                                'images:id,product_id,image',
-                                'sizes'
-                            ])
-                            ->orderBy('id', 'desc');
-                    },
-                    'banner.banner_images'
-                ])
-                ->select('id', 'name', 'slug', 'priority')
-                ->orderBy('priority');
-
-            // Total categories count
-            $total = (clone $home_category_products)->count();
-
-            // Paginate categories
-            $categories = $home_category_products
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
-                ->get();
-
-            // Limit products
-            $categories->each(function ($category) {
-                $category->products = $category->products->take(15)->values();
-            });
-
-            return [
-                'data' => $categories,
-                'current_page' => $page,
-                'per_page' => $perPage,
-                'total' => $total,
-                'has_more' => ($page * $perPage) < $total
-            ];
+        // Limit products
+        $categories->each(function ($category) {
+            $category->products = $category->products->take(15)->values();
         });
 
-        return response()->json($result);
-    }
+        return [
+            'data' => $categories,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'has_more' => ($page * $perPage) < $total
+        ];
+    });
+
+    return response()->json($result);
+}
 
     public function index()
     {

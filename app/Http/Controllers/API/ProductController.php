@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Size;
+use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+
+    use ClearsHomeCache;
     /**
      * Display a listing of the resource.
      */
@@ -155,7 +158,7 @@ class ProductController extends Controller
                 ]);
             }
         }
-
+        $this->clearHomeCategoryCach();
         return response()->json([
             'message' => 'product created successfully',
             'data'    => $product->load('images', 'sizes', 'faqs', 'category'),
@@ -336,7 +339,7 @@ class ProductController extends Controller
         } else {
             $product->faqs()->delete();
         }
-
+        $this->clearHomeCategoryCach();
         return response()->json([
             'message' => 'Product updated successfully',
             'data'    => $product->fresh()->load('images', 'sizes', 'faqs', 'category'),
@@ -378,7 +381,7 @@ class ProductController extends Controller
 
         // Delete product
         $product->delete();
-
+        $this->clearHomeCategoryCach();
         return response()->json([
             'message' => 'Product deleted successfully',
         ], 200);

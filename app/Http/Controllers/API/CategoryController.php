@@ -4,11 +4,14 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
+    use ClearsHomeCache;
     public function index()
     {
         $categories = Category::with('parent')
@@ -27,11 +30,14 @@ class CategoryController extends Controller
 
     public function frontEndIndex()
     {
+        $cacheKey = "categoryHomePage";
         // Get all root categories with ALL nested children recursively
-        $categories = Category::whereNull('parent_id')
+        $categories = Cache::remember($cacheKey,86400,function(){
+            return Category::whereNull('parent_id')
             ->with('allChildren') // This will recursively load all nested children
             ->orderBy('priority')
             ->get();
+        });
             
         return response()->json($categories);
     }
@@ -52,7 +58,9 @@ class CategoryController extends Controller
             'priority'  => $request->priority ?? 0,
             'home_category' => $request->home_category ?? false,
         ]);
-        
+        $this->clearHomeCategoryCach();
+          // Simple cache forget
+        Cache::forget('categoryHomePage');
         return response()->json($category, 201);
     }
 
@@ -90,7 +98,9 @@ class CategoryController extends Controller
             'priority'  => $request->priority ?? 0,
             'home_category' => $request->home_category ?? $category->home_category,
         ]);
-        
+        $this->clearHomeCategoryCach();
+          // Simple cache forget
+        Cache::forget('categoryHomePage');
         return response()->json($category);
     }
 
@@ -103,9 +113,11 @@ class CategoryController extends Controller
             return response()->json([
                 'message' => 'Cannot delete category with subcategories. Please delete or reassign subcategories first.'
             ], 422);
-        }
-        
+        }   
         $category->delete();
+        $this->clearHomeCategoryCach();
+          // Simple cache forget
+        Cache::forget('categoryHomePage');
         return response()->json(['message' => 'Category deleted successfully']);
     }
 

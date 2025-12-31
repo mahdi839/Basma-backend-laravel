@@ -20,6 +20,7 @@ use App\Http\Controllers\API\PathaoController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\ProductStockController;
 use App\Http\Controllers\API\RolePermissionController;
+use Illuminate\Support\Facades\Cache;
 
 /*
 |--------------------------------------------------------------------------
@@ -305,3 +306,4 @@ Route::prefix('customers')->group(function () {
 // Dashboard summary (Permission Protected)
 Route::middleware(['auth:sanctum', 'permission:view dashboard summary'])
     ->get('/dashboard/summary', [DashboardSummaryController::class, 'summary']);
+
