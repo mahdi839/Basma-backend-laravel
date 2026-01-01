@@ -132,8 +132,8 @@ Route::middleware(['auth:sanctum', 'role:super-admin'])->group(function () {
 // --------------------------
 // PRODUCTS PERMISSIONS
 // --------------------------
-Route::middleware(['permission:view products'])
-    ->get('products', [ProductController::class, 'index']);
+// Route::middleware(['permission:view products'])
+//     ->get('products', [ProductController::class, 'index']);
 
 Route::middleware(['permission:create products'])
     ->post('products', [ProductController::class, 'store']);
