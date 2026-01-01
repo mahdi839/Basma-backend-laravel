@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Size;
 use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
@@ -170,7 +171,12 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['images', 'sizes', 'faqs', 'category'])->findOrFail($id);
+        $cacheKey = "product:{$id}";
+
+        $product = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($id) {
+            return Product::with(['images', 'sizes', 'faqs', 'category'])
+                ->findOrFail($id);
+        });
 
         return response()->json([
             'message' => 'success',
@@ -340,6 +346,7 @@ class ProductController extends Controller
             $product->faqs()->delete();
         }
         $this->clearHomeCategoryCach();
+        Cache::forget("product:{$id}");
         return response()->json([
             'message' => 'Product updated successfully',
             'data'    => $product->fresh()->load('images', 'sizes', 'faqs', 'category'),
@@ -382,6 +389,7 @@ class ProductController extends Controller
         // Delete product
         $product->delete();
         $this->clearHomeCategoryCach();
+         Cache::forget("product:{$id}");
         return response()->json([
             'message' => 'Product deleted successfully',
         ], 200);
