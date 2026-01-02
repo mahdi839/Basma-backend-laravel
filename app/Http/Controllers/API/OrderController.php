@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\AbandonedCheckout;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ProductSize;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use App\Services\FacebookConversionService;
@@ -261,6 +262,26 @@ class OrderController extends Controller
             $contents = [];
 
             foreach ($request->cart as $item) {
+                // ✅ If size is selected → stock-based product
+                if ($item['size']) {
+                    
+                    $productSize = ProductSize::where('product_id', $item['id'])
+                        ->where('size_id', $item['size'])
+                        ->lockForUpdate() // 🔒 IMPORTANT
+                        ->first();
+                    if (!$productSize) {
+                        throw new \Exception("Product size not found.");
+                    }
+
+                    if ($productSize->stock < $item['qty']) {
+                        throw new \Exception(
+                            "Insufficient stock for {$item['title']} ({$item['size']})"
+                        );
+                    }
+
+                    // 🔻 Reduce stock
+                    $productSize->decrement('stock', $item['qty']);
+                }
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $item['id'],
