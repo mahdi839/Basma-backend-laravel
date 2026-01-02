@@ -227,8 +227,7 @@ Route::middleware(['permission:manage inventory'])
 Route::middleware(['permission:manage shipping costs'])
     ->apiResource('shipping-costs', ShippingCostController::class);
 
-Route::middleware(['permission:view shipping costs'])
-    ->get('shipping-costs-latest', [ShippingCostController::class, 'latest']);
+Route::get('shipping-costs-latest', [ShippingCostController::class, 'latest']);
 
 
 // --------------------------

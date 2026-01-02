@@ -34,7 +34,6 @@ class ShippingCostController extends Controller
             'outside_dhaka' => 'nullable|numeric',
             'one_shipping_cost' => 'nullable|numeric',
         ]);
-
         $data =  ShippingCost::create($request->all());
         return response()->json($data, 201);
     }
@@ -73,7 +72,12 @@ class ShippingCostController extends Controller
             'one_shipping_cost' => 'nullable|numeric',
         ]);
         $shippingCost = ShippingCost::findOrFail($id);
-        $shippingCost->update($request->all());
+        $shippingCost->update([
+            'inside_dhaka' => $request->inside_dhaka ?: null,
+            'outside_dhaka' => $request->outside_dhaka ?: null,
+            'one_shipping_cost' => $request->one_shipping_cost ?: null,
+        ]);
+
 
         return response()->json(['message' => 'Updated successfully']);
     }

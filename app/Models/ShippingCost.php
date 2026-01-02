@@ -9,5 +9,6 @@ class ShippingCost extends Model
     protected $fillable = [
         'inside_dhaka',
         'outside_dhaka',
+        'one_shipping_cost'
     ];
 }
