@@ -67,6 +67,7 @@ class OrderController extends Controller
                         ->orWhere('phone', 'LIKE', "%$search%");
                 });
             })
+            ->latest()
             ->paginate(10);
         $orders->getCollection()->transform(function ($order) {
             $orderCount = Order::where('phone', $order->phone)->count();
