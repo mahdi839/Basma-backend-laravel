@@ -38,7 +38,8 @@ class ProductController extends Controller
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
-            ->get();
+            ->latest()
+            ->paginate(20);
 
         return response()->json([
             'message' => 'success',
