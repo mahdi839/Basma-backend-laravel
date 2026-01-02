@@ -9,9 +9,9 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductSize;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Date;
 use App\Services\FacebookConversionService;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class OrderController extends Controller
 {
@@ -51,10 +51,10 @@ class OrderController extends Controller
                 $q->where('total', '<=', $max);
             })
             ->when($start_date, function ($q) use ($start_date) {
-                $q->where('created_at', '>=', $start_date);
+                $q->whereDate('created_at', '>=', $start_date);
             })
             ->when($end_date, function ($q) use ($end_date) {
-                $q->where('created_at', '<=', $end_date);
+                $q->whereDate('created_at', '<=', $end_date);
             })
             ->when($product_title, function ($q) use ($product_title) {
                 $q->whereHas('orderItems', function ($query) use ($product_title) {
@@ -265,7 +265,7 @@ class OrderController extends Controller
             foreach ($request->cart as $item) {
                 // ✅ If size is selected → stock-based product
                 if ($item['size']) {
-                    
+
                     $productSize = ProductSize::where('product_id', $item['id'])
                         ->where('size_id', $item['size'])
                         ->lockForUpdate() // 🔒 IMPORTANT
