@@ -227,7 +227,7 @@ class OrderController extends Controller
             'cart.*.unitPrice' => 'required|numeric',
             'cart.*.qty' => 'required|integer',
             'cart.*.totalPrice' => 'required|numeric',
-            'cart.*.colorImage' => 'required',
+            'cart.*.colorImage' => 'sometimes|nullable',
             'total_amount' => 'required|numeric',
             // Facebook tracking data
             'fbp' => 'nullable|string',
