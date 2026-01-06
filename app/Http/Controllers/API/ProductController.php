@@ -62,7 +62,7 @@ class ProductController extends Controller
 
             // images
             'image'   => 'required|array',
-            'image.*' => 'image|mimes:jpg,jpeg,png',
+            'image.*' =>  'image|max:1024',
 
             // categories
             'categories'               => 'nullable|array',
@@ -74,7 +74,7 @@ class ProductController extends Controller
             // COLORS with color codes and images
             'colors'              => 'nullable|array',
             'colors.*.code'       => 'nullable|string',  // hex code like #FF5733
-            'colors.*.image'      => 'required|image|mimes:jpg,jpeg,png',
+            'colors.*.image'      => 'required|image|max:1024',
 
             // SIZES with prices and stock
             'sizes'              => 'nullable|array',
@@ -200,7 +200,7 @@ class ProductController extends Controller
 
             // images
             'image'   => 'nullable|array',
-            'image.*' => 'image|mimes:jpg,jpeg,png',
+            'image.*' => 'required|image|max:1024',
 
             // images to delete
             'deleted_images'   => 'nullable|array',
@@ -216,7 +216,7 @@ class ProductController extends Controller
             // COLORS
             'colors'              => 'nullable|array',
             'colors.*.code'       => 'nullable|string',
-            'colors.*.image'      => 'nullable|image|mimes:jpg,jpeg,png',
+            'colors.*.image'      => 'required|image|max:1024',
             'colors.*.existing_image' => 'nullable|string', // for keeping existing images
 
             // SIZES

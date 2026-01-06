@@ -41,7 +41,7 @@ class BannerController extends Controller
             'category_id' => 'required_if:type,category|exists:categories,id',
             'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
             'images' => 'required|array',
-            'images.*' => 'required|image|mimes:jpg,jpeg,png,gif|max:5120'
+            'images.*' => 'required|image|max:1024',
         ],
         [
             'category_id.required_if' => 'Category Field Is Required',
@@ -98,7 +98,7 @@ class BannerController extends Controller
         'category_id' => 'nullable|required_if:type,category|exists:categories,id',
         'products_slots_id' => 'nullable|required_if:type,slot|exists:products_slots,id',
         'images' => 'sometimes|array',
-        'images.*' => 'image|mimes:jpg,jpeg,png,gif',
+        'images.*' => 'required|image|max:1024',
         'delete_images' => 'sometimes|array',
         'delete_images.*' => 'exists:banner_images,id'
         ]);
