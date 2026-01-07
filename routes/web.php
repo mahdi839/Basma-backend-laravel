@@ -1,11 +1,11 @@
 <?php
 
-use App\Http\Controllers\web\DashboardController\HomeController;
+
 use App\Http\Controllers\web\DashboardController\SizeController;
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
 
-Route::get('/',[HomeController::class,'index']);
+// Route::get('/',[HomeController::class,'index']);
 // Route::get('/admin/index/size',[SizeController::class,'index'])->name('admin.index.size');
 // Route::get('/admin/create/size',[SizeController::class,'create'])->name('admin.create.size');
 // Route::post('/admin/store/size',[SizeController::class,'store'])->name('admin.store.size');
