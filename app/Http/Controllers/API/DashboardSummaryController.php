@@ -9,6 +9,7 @@ use App\Models\ProductStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DashboardSummaryController extends Controller
 {
@@ -38,7 +39,7 @@ class DashboardSummaryController extends Controller
         $statuses = null;
         if (!empty($validated['status'])) {
             $statuses = collect(explode(',', $validated['status']))
-                ->map(fn ($s) => trim($s))
+                ->map(fn($s) => trim($s))
                 ->filter()
                 ->values()
                 ->all();
@@ -52,7 +53,7 @@ class DashboardSummaryController extends Controller
 
         $ordersCount = (clone $ordersQ)->count();
 
-        // Customers by distinct phone (swap to user_id if you prefer)
+        // Customers by distinct phone
         $customers = (clone $ordersQ)
             ->whereNotNull('phone')
             ->distinct('phone')
@@ -60,14 +61,14 @@ class DashboardSummaryController extends Controller
 
         // ----- REVENUE (sum of order_items.totalPrice inside the window)
         $revenue = OrderItem::whereHas('order', function ($q) use ($from, $to, $statuses) {
-                $q->whereBetween('created_at', [$from, $to]);
-                if ($statuses) $q->whereIn('status', $statuses);
-            })
+            $q->whereBetween('created_at', [$from, $to]);
+            if ($statuses) $q->whereIn('status', $statuses);
+        })
             ->sum('totalPrice');
 
         // ----- ITEMS (for both COGS + Hot Products)
-        // Include fields we need for aggregation & display
-        $items = OrderItem::with(['selectedVariant:id,product_id,value'])
+        // ✅ Changed: Load 'size' relationship instead of 'selectedVariant'
+        $items = OrderItem::with(['size:id,size', 'product:id,title'])
             ->whereHas('order', function ($q) use ($from, $to, $statuses) {
                 $q->whereBetween('created_at', [$from, $to]);
                 if ($statuses) $q->whereIn('status', $statuses);
@@ -75,71 +76,72 @@ class DashboardSummaryController extends Controller
             ->get([
                 'id',
                 'product_id',
-                'product_variant_id',
-                'title',        // from your schema
+                'selected_size',  // This is size_id
+                'title',
                 'qty',
                 'totalPrice',
+                'unitPrice',
             ]);
 
-        // ----- LATEST STOCK purchase_price per (product_id, product_variant_id)
+        // ----- LATEST STOCK/PRICE per (product_id, size_id)
         $productIds = $items->pluck('product_id')->unique()->values();
 
-        $allStocks = ProductStock::whereIn('product_id', $productIds)
-            ->get(['id','product_id','product_variant_id','purchase_price']);
+        // ✅ Use product_sizes table for purchase price (or use 'price' from pivot)
+        $allStocks = DB::table('product_sizes')
+            ->whereIn('product_id', $productIds)
+            ->get(['id', 'product_id', 'size_id', 'price', 'stock']);
 
         $latestStockByKey = $allStocks
-            ->groupBy(fn ($row) => $row->product_id.'#'.($row->product_variant_id ?? 'null'))
-            ->map(fn (Collection $group) => $group->sortByDesc('id')->first());
+            ->groupBy(fn($row) => $row->product_id . '#' . ($row->size_id ?? 'null'))
+            ->map(fn($group) => $group->sortByDesc('id')->first());
 
-        // ----- COGS (estimated) = sum(latest_purchase_price * qty)
+        // ----- COGS (estimated) = sum(price * qty)
         $estimatedCogs = 0.0;
         foreach ($items as $it) {
-            $key      = $it->product_id.'#'.($it->product_variant_id ?? 'null');
+            $key = $it->product_id . '#' . ($it->selected_size ?? 'null');
             $stockRow = $latestStockByKey->get($key);
-            $purchase = $stockRow?->purchase_price ?? 0;
+            $purchase = $stockRow->price ?? $it->unitPrice ?? 0;
             $estimatedCogs += ((float)$purchase) * (int)$it->qty;
         }
 
         $estimatedProfit = (float)$revenue - (float)$estimatedCogs;
 
-        // ----- HOT PRODUCTS (grouped by product + variant)
-        // group by product_id + variant + title + variant_value (from selectedVariant->value)
+        // ----- HOT PRODUCTS (grouped by product + size)
         $grouped = $items->groupBy(function ($it) {
-            $variantKey = $it->product_variant_id ?? 'null';
-            $variantVal = optional($it->selectedVariant)->value ?? '';
-            $title      = $it->title ?? '';
-            return "{$it->product_id}#{$variantKey}#{$title}#{$variantVal}";
+            $sizeKey = $it->selected_size ?? 'null';
+            $sizeName = optional($it->size)->size ?? '';
+            $title = $it->title ?? '';
+            return "{$it->product_id}#{$sizeKey}#{$title}#{$sizeName}";
         });
 
-        $hotProducts = $grouped->map(function (Collection $group) use ($latestStockByKey) {
-                /** @var \App\Models\OrderItem $first */
-                $first = $group->first();
-                $productId  = $first->product_id;
-                $variantId  = $first->product_variant_id;
-                $variantVal = optional($first->selectedVariant)->value; // <- from relation
-                $title      = $first->title ?? null;
+        $hotProducts = $grouped->map(function ($group) use ($latestStockByKey) {
+            $first = $group->first();
+            $productId = $first->product_id;
+            $sizeId = $first->selected_size;
+            $sizeName = optional($first->size)->size;
+            $title = $first->title ?? null;
 
-                $qtySold = (int) $group->sum('qty');
-                $revenue = (float) $group->sum('totalPrice');
+            $qtySold = (int) $group->sum('qty');
+            $revenue = (float) $group->sum('totalPrice');
 
-                // compute cogs for this group via latest purchase price
-                $key      = $productId.'#'.($variantId ?? 'null');
-                $stockRow = $latestStockByKey->get($key);
-                $purchase = $stockRow?->purchase_price ?? 0;
-                $cogs     = (float) $purchase * $qtySold;
-                $profit   = (float) $revenue - $cogs;
+            // Compute COGS for this group
+            $key = $productId . '#' . ($sizeId ?? 'null');
+            $stockRow = $latestStockByKey->get($key);
+            $purchase = $stockRow->price ?? $first->unitPrice ?? 0;
+            $cogs = (float) $purchase * $qtySold;
+            $profit = (float) $revenue - $cogs;
 
-                return [
-                    'product_id'        => $productId,
-                    'product_variant_id'=> $variantId,
-                    'title'             => $title,
-                    'variant_value'     => $variantVal, // from ProductVariant.value
-                    'qty_sold'          => $qtySold,
-                    'revenue'           => number_format($revenue, 2, '.', ''),
-                    'estimated_cogs'    => number_format($cogs, 2, '.', ''),
-                    'estimated_profit'  => number_format($profit, 2, '.', ''),
-                ];
-            })
+            return [
+                'product_id'     => $productId,
+                'size_id'        => $sizeId,
+                'title'          => $title,
+                'size_name'      => $sizeName, // ✅ Changed from variant_value
+                'qty_sold'       => $qtySold,
+                'revenue'        => number_format($revenue, 2, '.', ''),
+                'estimated_cogs' => number_format($cogs, 2, '.', ''),
+                'estimated_profit' => number_format($profit, 2, '.', ''),
+            ];
+        })
             ->sortByDesc(function ($row) use ($hotBy) {
                 return $hotBy === 'revenue'
                     ? (float) $row['revenue']
