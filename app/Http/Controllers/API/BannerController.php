@@ -1,8 +1,10 @@
 <?php
 
 namespace App\Http\Controllers\API;
+
 use App\Http\Controllers\Controller;
 use App\Models\Banner;
+use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -10,21 +12,22 @@ use Illuminate\Support\Facades\Storage;
 
 class BannerController extends Controller
 {
+    use ClearsHomeCache;
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $bannersData = Banner::with(['banner_images','category','slot'])->paginate(20);
+        $bannersData = Banner::with(['banner_images', 'category', 'slot'])->paginate(20);
         return response()->json($bannersData);
     }
 
     public function frontendIndex()
     {
-        $bannersData = Cache::remember('frontend_banners',60*60, function(){
-            return Banner::with(['banner_images:id,banner_id,path','category:id,name','slot:id,slot_name'])
-        ->select('id','link','type','category_id','products_slots_id')
-        ->get();
+        $bannersData = Cache::remember('frontend_banners', 60 * 60, function () {
+            return Banner::with(['banner_images:id,banner_id,path', 'category:id,name', 'slot:id,slot_name'])
+                ->select('id', 'link', 'type', 'category_id', 'products_slots_id')
+                ->get();
         });
         return response()->json($bannersData);
     }
@@ -34,23 +37,24 @@ class BannerController extends Controller
      */
     public function store(Request $request)
     {
-        
-        $request->validate([
-            'link' => 'nullable',
-            'type' => 'required',
-            'category_id' => 'required_if:type,category|exists:categories,id',
-            'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
-            'images' => 'required|array',
-            'images.*' => 'required|image|max:1024',
-        ],
-        [
-            'category_id.required_if' => 'Category Field Is Required',
-             'products_slots_id.required_if' => 'Slot Field Is Required'
-        ]
-    
-    );
 
-   
+        $request->validate(
+            [
+                'link' => 'nullable',
+                'type' => 'required',
+                'category_id' => 'required_if:type,category|exists:categories,id',
+                'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
+                'images' => 'required|array',
+                'images.*' => 'required|image|max:1024',
+            ],
+            [
+                'category_id.required_if' => 'Category Field Is Required',
+                'products_slots_id.required_if' => 'Slot Field Is Required'
+            ]
+
+        );
+
+
 
 
         $banner = DB::transaction(function () use ($request) {
@@ -61,18 +65,18 @@ class BannerController extends Controller
                 'products_slots_id' => $request->products_slots_id,
             ]);
 
-          foreach ($request->file('images') as $image) {
+            foreach ($request->file('images') as $image) {
                 $path_name = $image->store('banner/images', 'public');
                 $banner->banner_images()->create([
                     'path' => $path_name
                 ]);
             }
 
-           return $banner->load('banner_images'); 
+            return $banner->load('banner_images');
         });
 
         Cache::forget('frontend_banners');
-
+        $this->clearHomeCategoryCach();
         return response()->json($banner);
     }
 
@@ -81,26 +85,26 @@ class BannerController extends Controller
      */
     public function show($id)
     {
-        $banner = Banner::with('banner_images','slot')->findOrFail($id);
+        $banner = Banner::with('banner_images', 'slot')->findOrFail($id);
         return response()->json($banner);
     }
-    
+
 
     /**
      * Update the specified resource in storage.
      */
     public function update(Request $request,  $id)
     {
-      
+
         $request->validate([
-        'link' => 'nullable',
-        'type' => 'required|in:hero,slot,category',
-        'category_id' => 'nullable|required_if:type,category|exists:categories,id',
-        'products_slots_id' => 'nullable|required_if:type,slot|exists:products_slots,id',
-        'images' => 'sometimes|array',
-        'images.*' => 'required|image|max:1024',
-        'delete_images' => 'sometimes|array',
-        'delete_images.*' => 'exists:banner_images,id'
+            'link' => 'nullable',
+            'type' => 'required|in:hero,slot,category',
+            'category_id' => 'nullable|required_if:type,category|exists:categories,id',
+            'products_slots_id' => 'nullable|required_if:type,slot|exists:products_slots,id',
+            'images' => 'sometimes|array',
+            'images.*' => 'required|image|max:1024',
+            'delete_images' => 'sometimes|array',
+            'delete_images.*' => 'exists:banner_images,id'
         ]);
 
         $singleBanner = Banner::findOrFail($id);
@@ -130,6 +134,7 @@ class BannerController extends Controller
                 }
             }
             Cache::forget('frontend_banners');
+            $this->clearHomeCategoryCach();
             return $singleBanner->load('banner_images');
         });
 
@@ -141,9 +146,9 @@ class BannerController extends Controller
      */
     public function destroy(Banner $banner)
     {
-        DB::transaction(function() use ($banner){
-           
-            foreach($banner->banner_images as $image){
+        DB::transaction(function () use ($banner) {
+
+            foreach ($banner->banner_images as $image) {
                 Storage::disk('public')->delete($image->path);
             }
             $banner->banner_images()->delete();
@@ -151,7 +156,7 @@ class BannerController extends Controller
         });
 
         Cache::forget('frontend_banners');
-       
+        $this->clearHomeCategoryCach();
         return response()->json([
             'message' => 'Successfully Deleted'
         ]);
