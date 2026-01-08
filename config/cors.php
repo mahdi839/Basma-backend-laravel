@@ -1,69 +1,25 @@
 <?php
 
 return [
+    'paths' => ['api/*', 'storage/*'],  // ← Add 'storage/*' here
 
-    /*
-    |--------------------------------------------------------------------------
-    | Paths
-    |--------------------------------------------------------------------------
-    | Allow CORS for all routes (api/* covers API routes)
-    */
-    'paths' => ['*'],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Allowed Methods
-    |--------------------------------------------------------------------------
-    | Allow all HTTP methods
-    */
     'allowed_methods' => ['*'],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Allowed Origins
-    |--------------------------------------------------------------------------
-    | Allow requests from any domain
-    */
-    'allowed_origins' => [ 'http://localhost:3000',      // for Next.js dev
+    'allowed_origins' => [
+        'http://localhost:3000',
         'https://basma-front-end-next-js-xotm.vercel.app', 
-        'https://ibtikarbd.com'
-],
-    /*
-    |--------------------------------------------------------------------------
-    | Allowed Origins Patterns
-    |--------------------------------------------------------------------------
-    */
+        'https://ibtikarbd.com',
+        'https://eyarafashion.xyz',  // ← Add your production domain
+        'https://www.eyarafashion.xyz',  // ← Add www version too
+    ],
+
     'allowed_origins_patterns' => [],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Allowed Headers
-    |--------------------------------------------------------------------------
-    | Allow all headers
-    */
     'allowed_headers' => ['*'],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Exposed Headers
-    |--------------------------------------------------------------------------
-    */
-    'exposed_headers' => [],
+    'exposed_headers' => ['Content-Length', 'Content-Type'],  // ← Add these
 
-    /*
-    |--------------------------------------------------------------------------
-    | Max Age
-    |--------------------------------------------------------------------------
-    */
     'max_age' => 0,
 
-    /*
-    |--------------------------------------------------------------------------
-    | Supports Credentials
-    |--------------------------------------------------------------------------
-    | Set false if you allow all origins
-    */
-    'supports_credentials' => true,
-
+    'supports_credentials' => false,  // ← Change to false when using wildcard origins
 ];
-
