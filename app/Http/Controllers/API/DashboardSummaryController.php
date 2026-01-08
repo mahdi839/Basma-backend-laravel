@@ -17,8 +17,8 @@ class DashboardSummaryController extends Controller
     {
         $validated = $request->validate([
             'range'       => 'nullable|in:today,week,month,year,custom',
-            'start_date'  => 'required_if:range,custom|date',
-            'end_date'    => 'required_if:range,custom|date|after_or_equal:start_date',
+            'start_date'  => 'date',
+            'end_date'    => 'date',
             'status'      => 'nullable|string', // CSV: paid,completed
             'hot_by'      => 'nullable|in:qty,revenue',
             'hot_limit'   => 'nullable|integer|min:1|max:50',
