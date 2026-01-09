@@ -66,6 +66,7 @@ class PermissionSeeder extends Seeder
 
             // Dashboard
             'view dashboard',
+            'view dashboard summary'
         ];
 
         foreach ($permissions as $permission) {

@@ -54,9 +54,6 @@ class BannerController extends Controller
 
         );
 
-
-
-
         $banner = DB::transaction(function () use ($request) {
             $banner =  Banner::create([
                 'link' => $request->link,
