@@ -22,49 +22,56 @@ class ProductsSlotController extends Controller
     
     // Cache with tags - now you can flush all pages at once
     $result = Cache::tags(['home_categories'])->remember($cacheKey, 3600, function () use ($page, $perPage) {
-        // Base query
-        $home_category_products = Category::where('home_category', 1)
+        // Calculate offset
+        $offset = ($page - 1) * $perPage;
+        
+        // Get total count efficiently (without loading relationships)
+        $total = Category::where('home_category', 1)
+            ->whereHas('products', function ($q) {
+                $q->whereIn('status', ['in-stock', 'prebook']);
+            })
+            ->count();
+        
+        // Optimized main query with minimal joins
+        $categories = Category::where('home_category', 1)
             ->whereHas('products', function ($q) {
                 $q->whereIn('status', ['in-stock', 'prebook']);
             })
             ->with([
+                // Eager load only first 15 products per category
                 'products' => function ($q) {
                     $q->whereIn('status', ['in-stock', 'prebook'])
                         ->select([
                             'products.id',
                             'products.title',
-                            'products.short_description',
-                            'products.description',
                             'products.price',
-                            'products.video_url',
                             'products.discount',
                             'products.status',
-                            'products.colors',
+                           
                         ])
-                        ->with([
-                            'images:id,product_id,image',
-                            'sizes'
-                        ])
-                        ->orderBy('id', 'desc');
+                        ->orderBy('products.id', 'desc')
+                        ->limit(15); // Limit at database level
                 },
-                'banner.banner_images'
+                // Only load first image per product
+                'products.images' => function ($q) {
+                    $q->select('id', 'product_id', 'image')
+                        ->orderBy('id')
+                        ->limit(1); // Only first image
+                },
+                // Banner with images
+                'banner' => function ($q) {
+                    $q->select('id', 'category_id', 'link', 'type');
+                },
+                'banner.banner_images' => function ($q) {
+                    $q->select('id', 'banner_id', 'image') // Adjust column names as needed
+                        ->limit(1); // Only first banner image if needed
+                }
             ])
             ->select('id', 'name', 'slug', 'priority')
-            ->orderBy('priority');
-
-        // Total categories count
-        $total = (clone $home_category_products)->count();
-
-        // Paginate categories
-        $categories = $home_category_products
-            ->skip(($page - 1) * $perPage)
+            ->orderBy('priority')
+            ->skip($offset)
             ->take($perPage)
             ->get();
-
-        // Limit products
-        $categories->each(function ($category) {
-            $category->products = $category->products->take(15)->values();
-        });
 
         return [
             'data' => $categories,
