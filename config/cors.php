@@ -7,7 +7,8 @@ return [
 
     'allowed_origins' => [
         'http://localhost:3000',
-        'https://basma-front-end-next-js-xotm.vercel.app', 
+        'https://basma-front-end-next-js-xotm.vercel.app',
+        'https://basma-front-end-next-js.vercel.app',
         'https://ibtikarbd.com',
         'https://eyarafashion.xyz',  // ← Add your production domain
         'https://www.eyarafashion.xyz',  // ← Add www version too
