@@ -347,13 +347,41 @@ class ProductController extends Controller
             $product->faqs()->delete();
         }
         $this->clearHomeCategoryCach();
-        Cache::forget("product:{$id}");
+        $this->clearRelatedCache($id);
         return response()->json([
             'message' => 'Product updated successfully',
             'data'    => $product->fresh()->load('images', 'sizes', 'faqs', 'category'),
         ]);
     }
 
+    /**
+     * Clear related products cache when product is updated/deleted
+     */
+    protected function clearRelatedCache($productId)
+    {
+        Cache::forget("product:{$productId}");
+        
+        // Clear all pages of related products cache
+        $product = Product::with('category:id')->find($productId);
+        
+        if ($product) {
+            $categoryIds = $product->category->pluck('id');
+            
+            // Get all products in same categories
+            $relatedProductIds = Product::whereHas('category', function ($q) use ($categoryIds) {
+                $q->whereIn('categories.id', $categoryIds);
+            })
+            ->pluck('id');
+            
+            // Clear cache for each product and all their pages
+            foreach ($relatedProductIds as $relatedId) {
+                // Clear up to 10 pages of cache (adjust as needed)
+                for ($page = 1; $page <= 10; $page++) {
+                    Cache::forget("related_products:{$relatedId}:page:{$page}");
+                }
+            }
+        }
+    }
     /**
      * Remove the specified resource from storage.
      */
@@ -390,26 +418,95 @@ class ProductController extends Controller
         // Delete product
         $product->delete();
         $this->clearHomeCategoryCach();
-         Cache::forget("product:{$id}");
+        $this->clearRelatedCache($id);
         return response()->json([
             'message' => 'Product deleted successfully',
         ], 200);
     }
 
-    public function category_products($id)
+    public function category_products(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
-        $relatedProducts = Product::whereHas('category', function ($q) use ($product) {
-            $q->whereIn('categories.id', $product->category->pluck('id'));
-        })
-            ->with(['images', 'sizes'])
-            ->where('id', '!=', $product->id)
-            ->whereIn('status', ['in-stock', 'prebook'])
-            ->take(10)
-            ->get();
+        $page = $request->query('page', 1);
+        $perPage = 20; // Products per page
 
-        return response()->json($relatedProducts);
+        // Cache key includes page number
+        $cacheKey = "related_products:{$id}:page:{$page}";
+
+        $result = Cache::remember($cacheKey, now()->addHours(2), function () use ($id, $page, $perPage) {
+            $product = Product::select('id')->with('category:id')->findOrFail($id);
+
+            $categoryIds = $product->category->pluck('id');
+
+            // Query with pagination
+            $query = Product::select([
+                'id',
+                'title',
+                'short_description',
+                'price',
+                'discount',
+                'status',
+                'colors',
+                'created_at'
+            ])
+                ->whereHas('category', function ($q) use ($categoryIds) {
+                    $q->whereIn('categories.id', $categoryIds);
+                })
+                ->with([
+                    'images' => function ($query) {
+                        $query->select('id', 'product_id', 'image')
+                            ->orderBy('id')
+                            ->limit(1);
+                    },
+                    'sizes' => function ($query) {
+                        $query->select('sizes.id', 'sizes.size')
+                            ->withPivot('price', 'stock');
+                    }
+                ])
+                ->where('id', '!=', $product->id)
+                ->whereIn('status', ['in-stock', 'prebook'])
+                ->orderBy('created_at', 'desc');
+
+            // Paginate
+            $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Transform data
+            $products = $paginated->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'title' => $item->title,
+                    'short_description' => $item->short_description,
+                    'price' => $item->price,
+                    'discount' => $item->discount,
+                    'status' => $item->status,
+                    'colors' => $item->colors,
+                    'images' => $item->images,
+                    'sizes' => $item->sizes->map(function ($size) {
+                        return [
+                            'id' => $size->id,
+                            'size' => $size->size,
+                            'price' => $size->pivot->price,
+                            'stock' => $size->pivot->stock,
+                        ];
+                    }),
+                    'created_at' => $item->created_at,
+                ];
+            });
+
+            return [
+                'data' => $products,
+                'pagination' => [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page' => $paginated->lastPage(),
+                    'per_page' => $paginated->perPage(),
+                    'total' => $paginated->total(),
+                    'has_more' => $paginated->hasMorePages(),
+                ]
+            ];
+        });
+
+        return response()->json($result);
     }
+
 
     public function searchProducts(Request $request)
     {
