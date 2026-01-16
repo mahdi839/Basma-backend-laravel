@@ -12,78 +12,81 @@ use Illuminate\Support\Facades\Cache;
 
 class ProductsSlotController extends Controller
 {
-   public function frontEndIndex(Request $request) 
-{
-    $perPage = 4;
-    $page = (int) $request->input('page', 1);
-    
-    // Create cache key
-    $cacheKey = "page_{$page}";
-    
-    // Cache with tags - now you can flush all pages at once
-    $result = Cache::tags(['home_categories'])->remember($cacheKey, 3600, function () use ($page, $perPage) {
-        // Calculate offset
-        $offset = ($page - 1) * $perPage;
-        
-        // Get total count efficiently (without loading relationships)
-        $total = Category::where('home_category', 1)
-            ->whereHas('products', function ($q) {
-                $q->whereIn('status', ['in-stock', 'prebook']);
-            })
-            ->count();
-        
-        // Optimized main query with minimal joins
-        $categories = Category::where('home_category', 1)
-            ->whereHas('products', function ($q) {
-                $q->whereIn('status', ['in-stock', 'prebook']);
-            })
-            ->with([
-                // Eager load only first 15 products per category
-                'products' => function ($q) {
-                    $q->whereIn('status', ['in-stock', 'prebook'])
-                        ->select([
-                            'products.id',
-                            'products.title',
-                            'products.price',
-                            'products.discount',
-                            'products.status',
-                           
-                        ])
-                        ->orderBy('products.id', 'desc')
-                        ->limit(15); // Limit at database level
-                },
-                // Only load first image per product
-                'products.images' => function ($q) {
-                    $q->select('id', 'product_id', 'image')
-                        ->orderBy('id')
-                        ->limit(1); // Only first image
-                },
-                // Banner with images
-                'banner' => function ($q) {
-                    $q->select('id', 'category_id', 'link', 'type');
-                },
-                'banner.banner_images' => function ($q) {
-                    $q->select('id', 'banner_id', 'image') // Adjust column names as needed
-                        ->limit(1); // Only first banner image if needed
-                }
-            ])
-            ->select('id', 'name', 'slug', 'priority')
-            ->orderBy('priority')
-            ->skip($offset)
-            ->take($perPage)
-            ->get();
+    public function frontEndIndex(Request $request)
+    {
+        $perPage = 4;
+        $page = (int) $request->input('page', 1);
 
-        return [
-            'data' => $categories,
-            'current_page' => $page,
-            'per_page' => $perPage,
-            'total' => $total,
-            'has_more' => ($page * $perPage) < $total
-        ];
-    });
+        // Create cache key
+        $cacheKey = "page_{$page}";
 
-    return response()->json($result);
-}
+        // Cache with tags - now you can flush all pages at once
+        $result = Cache::tags(['home_categories'])->remember($cacheKey, 3600, function () use ($page, $perPage) {
+            // Calculate offset
+            $offset = ($page - 1) * $perPage;
+
+            // Get total count efficiently (without loading relationships)
+            $total = Category::where('home_category', 1)
+                ->whereHas('products', function ($q) {
+                    $q->whereIn('status', ['in-stock', 'prebook']);
+                })
+                ->count();
+
+            // Optimized main query with minimal joins
+            $categories = Category::where('home_category', 1)
+                ->whereHas('products', function ($q) {
+                    $q->whereIn('status', ['in-stock', 'prebook']);
+                })
+                ->with([
+                    // Eager load only first 15 products per category
+                    'products' => function ($q) {
+                        $q->whereIn('status', ['in-stock', 'prebook'])
+                            ->select([
+                                'products.id',
+                                'products.colors',
+                                'products.title',
+                                'products.price',
+                                'products.discount',
+                                'products.status',
+
+                            ])
+                            ->withCount([
+                                'sizes',
+                            ])
+                            ->orderBy('products.id', 'desc')
+                            ->limit(15); // Limit at database level
+                    },
+                    // Only load first image per product
+                    'products.images' => function ($q) {
+                        $q->select('id', 'product_id', 'image')
+                            ->orderBy('id')
+                            ->limit(1); // Only first image
+                    },
+                    // Banner with images
+                    'banner' => function ($q) {
+                        $q->select('id', 'category_id', 'link', 'type');
+                    },
+                    'banner.banner_images' => function ($q) {
+                        $q->select('id', 'banner_id', 'path')
+                            ->limit(1);
+                    }
+                ])
+                ->select('id', 'name', 'slug', 'priority')
+                ->orderBy('priority')
+                ->skip($offset)
+                ->take($perPage)
+                ->get();
+            return [
+                'data' => $categories,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'has_more' => ($page * $perPage) < $total
+            ];
+        });
+
+        return response()->json($result);
+    }
 
     public function index()
     {
