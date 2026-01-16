@@ -360,19 +360,19 @@ class ProductController extends Controller
     protected function clearRelatedCache($productId)
     {
         Cache::forget("product:{$productId}");
-        
+
         // Clear all pages of related products cache
         $product = Product::with('category:id')->find($productId);
-        
+
         if ($product) {
             $categoryIds = $product->category->pluck('id');
-            
+
             // Get all products in same categories
             $relatedProductIds = Product::whereHas('category', function ($q) use ($categoryIds) {
                 $q->whereIn('categories.id', $categoryIds);
             })
-            ->pluck('id');
-            
+                ->pluck('id');
+
             // Clear cache for each product and all their pages
             foreach ($relatedProductIds as $relatedId) {
                 // Clear up to 10 pages of cache (adjust as needed)
@@ -437,7 +437,6 @@ class ProductController extends Controller
 
             $categoryIds = $product->category->pluck('id');
 
-            // Query with pagination
             $query = Product::select([
                 'id',
                 'title',
@@ -445,21 +444,18 @@ class ProductController extends Controller
                 'price',
                 'discount',
                 'status',
-                'colors',
                 'created_at'
             ])
+                ->selectRaw('JSON_LENGTH(products.colors) as colors_count')
+                ->withCount(['sizes'])
                 ->whereHas('category', function ($q) use ($categoryIds) {
                     $q->whereIn('categories.id', $categoryIds);
                 })
                 ->with([
-                    'images' => function ($query) {
-                        $query->select('id', 'product_id', 'image')
+                    'images' => function ($q) {
+                        $q->select('id', 'product_id', 'image')
                             ->orderBy('id')
                             ->limit(1);
-                    },
-                    'sizes' => function ($query) {
-                        $query->select('sizes.id', 'sizes.size')
-                            ->withPivot('price', 'stock');
                     }
                 ])
                 ->where('id', '!=', $product->id)
@@ -470,7 +466,7 @@ class ProductController extends Controller
             $paginated = $query->paginate($perPage, ['*'], 'page', $page);
 
             // Transform data
-            $products = $paginated->map(function ($item) {
+            $products = $products = $paginated->getCollection()->map(function ($item) {
                 return [
                     'id' => $item->id,
                     'title' => $item->title,
@@ -478,19 +474,13 @@ class ProductController extends Controller
                     'price' => $item->price,
                     'discount' => $item->discount,
                     'status' => $item->status,
-                    'colors' => $item->colors,
-                    'images' => $item->images,
-                    'sizes' => $item->sizes->map(function ($size) {
-                        return [
-                            'id' => $size->id,
-                            'size' => $size->size,
-                            'price' => $size->pivot->price,
-                            'stock' => $size->pivot->stock,
-                        ];
-                    }),
+                    'sizes_count' => $item->sizes_count,
+                    'colors_count' => $item->colors_count ?? 0,
+                    'image' => $item->images->first()?->image,
                     'created_at' => $item->created_at,
                 ];
             });
+
 
             return [
                 'data' => $products,

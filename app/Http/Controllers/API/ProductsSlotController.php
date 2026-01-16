@@ -43,13 +43,13 @@ class ProductsSlotController extends Controller
                         $q->whereIn('status', ['in-stock', 'prebook'])
                             ->select([
                                 'products.id',
-                                'products.colors',
                                 'products.title',
                                 'products.price',
                                 'products.discount',
                                 'products.status',
 
                             ])
+                            ->selectRaw('JSON_LENGTH(products.colors) as colors_count')
                             ->withCount([
                                 'sizes',
                             ])
