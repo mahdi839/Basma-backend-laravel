@@ -49,6 +49,7 @@ class CategoryController extends Controller
             'parent_id' => 'nullable|exists:categories,id',
             'priority'  => 'nullable|integer|min:0',
             'home_category' => 'nullable|boolean',
+            'size_guide_type' => 'nullable|in:shoe,dress',
         ]);
 
         $category = Category::create([
@@ -57,6 +58,7 @@ class CategoryController extends Controller
             'parent_id' => $request->parent_id,
             'priority'  => $request->priority ?? 0,
             'home_category' => $request->home_category ?? false,
+            'size_guide_type' => $request->size_guide_type,
         ]);
         $this->clearHomeCategoryCach();
           // Simple cache forget
@@ -89,6 +91,7 @@ class CategoryController extends Controller
             ],
             'priority'  => 'nullable|integer|min:0',
             'home_category' => 'nullable|boolean',
+            'size_guide_type' => 'nullable|in:shoe,dress',
         ]);
 
         $category->update([
@@ -97,6 +100,7 @@ class CategoryController extends Controller
             'parent_id' => $request->parent_id,
             'priority'  => $request->priority ?? 0,
             'home_category' => $request->home_category ?? $category->home_category,
+            'size_guide_type' => $request->size_guide_type ?? $category->size_guide_type,
         ]);
         $this->clearHomeCategoryCach();
           // Simple cache forget
