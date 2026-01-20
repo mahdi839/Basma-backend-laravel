@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Product;
 use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -106,6 +107,11 @@ class CategoryController extends Controller
           // Simple cache forget
         Cache::forget('categoryHomePage');
         return response()->json($category);
+    }
+
+    public function productSizeGuideType ($id){
+      $product = Product::with('category:id,name,size_guide_type')->where('id',$id)->first('id');
+      return response()->json($product->category[0]);
     }
 
     public function destroy($id)

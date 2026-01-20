@@ -53,6 +53,7 @@ Route::get('/product-search', [ProductController::class, 'searchProducts']);
 Route::get('frontend/categories', [CategoryController::class, 'frontEndIndex']);
 Route::get('frontend/banner', [BannerController::class, 'frontEndIndex']);
 Route::get('product-slots_index/frontEndIndex', [ProductsSlotController::class, 'frontEndIndex']);
+Route::get('productSizeGuideType/{id}', [CategoryController::class, 'productSizeGuideType']);
 
 // Orders (frontend store)
 Route::apiResource('orders', OrderController::class)->only(['store']);
