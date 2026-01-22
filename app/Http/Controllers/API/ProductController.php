@@ -440,13 +440,13 @@ class ProductController extends Controller
             $query = Product::select([
                 'id',
                 'title',
+                'colors',
                 'short_description',
                 'price',
                 'discount',
                 'status',
                 'created_at'
             ])
-                ->selectRaw('JSON_LENGTH(products.colors) as colors_count')
                 ->withCount(['sizes'])
                 ->whereHas('category', function ($q) use ($categoryIds) {
                     $q->whereIn('categories.id', $categoryIds);
@@ -475,7 +475,7 @@ class ProductController extends Controller
                     'discount' => $item->discount,
                     'status' => $item->status,
                     'sizes_count' => $item->sizes_count,
-                    'colors_count' => $item->colors_count ?? 0,
+                    'colors' => $item->colors,
                     'image' => $item->images->first()?->image,
                     'created_at' => $item->created_at,
                 ];

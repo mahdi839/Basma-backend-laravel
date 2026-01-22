@@ -43,15 +43,12 @@ class ProductsSlotController extends Controller
                         $q->whereIn('status', ['in-stock', 'prebook'])
                             ->select([
                                 'products.id',
-                                'products.title',
+                              
                                 'products.price',
+                                'products.colors',
                                 'products.discount',
                                 'products.status',
 
-                            ])
-                            ->selectRaw('JSON_LENGTH(products.colors) as colors_count')
-                            ->withCount([
-                                'sizes',
                             ])
                             ->orderBy('products.id', 'desc')
                             ->limit(15); // Limit at database level
