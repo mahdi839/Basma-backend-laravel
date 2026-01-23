@@ -45,6 +45,8 @@ Route::get('/product_add_category', [CategoryController::class, 'product_add_cat
 
 // products whos category is same
 Route::get('/category_products/{id}', [ProductController::class, 'category_products']);
+// Products by category slug
+Route::get('/category-slug-products/{slug}', [ProductController::class, 'categorySlugProducts']);
 
 // product search
 Route::get('/product-search', [ProductController::class, 'searchProducts']);

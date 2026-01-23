@@ -216,7 +216,7 @@ class ProductController extends Controller
             // COLORS
             'colors'              => 'nullable|array',
             'colors.*.code'       => 'nullable|string',
-            'colors.*.image'      => 'required|image|max:1024',
+            'colors.*.image'      => 'nullable|image|max:1024',
             'colors.*.existing_image' => 'nullable|string', // for keeping existing images
 
             // SIZES
@@ -482,6 +482,74 @@ class ProductController extends Controller
             });
 
 
+            return [
+                'data' => $products,
+                'pagination' => [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page' => $paginated->lastPage(),
+                    'per_page' => $paginated->perPage(),
+                    'total' => $paginated->total(),
+                    'has_more' => $paginated->hasMorePages(),
+                ]
+            ];
+        });
+
+        return response()->json($result);
+    }
+
+    public function categorySlugProducts(Request $request, $slug)
+    {
+        $page = $request->query('page', 1);
+        $perPage = 20;
+
+        // Cache key includes slug and page number
+        $cacheKey = "category_slug_products:{$slug}:page:{$page}";
+
+        $result = Cache::remember($cacheKey, now()->addHours(2), function () use ($slug, $page, $perPage) {
+            // Find category by slug
+            $category = Category::where('slug', $slug)->firstOrFail();
+            $query = Product::select([
+                'id',
+                'title',
+                'colors',
+                'short_description',
+                'price',
+                'discount',
+                'status',
+                'created_at'
+            ])
+                ->withCount(['sizes'])
+                ->whereHas('category', function ($q) use ($category) {
+                    $q->where('categories.id', $category->id);
+                })
+                ->with([
+                    'images' => function ($q) {
+                        $q->select('id', 'product_id', 'image')
+                            ->orderBy('id')
+                            ->limit(1);
+                    }
+                ])
+                ->whereIn('status', ['in-stock', 'prebook'])
+                ->orderBy('created_at', 'desc');
+
+            // Paginate
+            $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Transform data
+            $products = $paginated->getCollection()->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'title' => $item->title,
+                    'short_description' => $item->short_description,
+                    'price' => $item->price,
+                    'discount' => $item->discount,
+                    'status' => $item->status,
+                    'sizes_count' => $item->sizes_count,
+                    'colors' => $item->colors,
+                    'image' => $item->images->first()?->image,
+                    'created_at' => $item->created_at,
+                ];
+            });
             return [
                 'data' => $products,
                 'pagination' => [
