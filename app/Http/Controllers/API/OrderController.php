@@ -141,6 +141,7 @@ class OrderController extends Controller
                 "Quantity",
                 "Unit Price",
                 "Total Price",
+                "Advance Payment", 
                 "Variant",
                 "Size",
                 "Color Image",
@@ -180,6 +181,7 @@ class OrderController extends Controller
                             $order->shipping_cost,
                             $order->payment_method,
                             $order->total,
+                            $order->advance_payment,
                             $order->status,
                         ]);
                     }
@@ -230,6 +232,7 @@ class OrderController extends Controller
             'cart.*.totalPrice' => 'required|numeric',
             'cart.*.colorImage' => 'sometimes|nullable',
             'total_amount' => 'required|numeric',
+            'advance_payment' => 'nullable|numeric|min:0',
             // Facebook tracking data
             'fbp' => 'nullable|string',
             'fbc' => 'nullable|string',
@@ -252,6 +255,7 @@ class OrderController extends Controller
                 'district' => $request->district,
                 'subtotal' => $subtotal,
                 'total' => $total,
+                'advance_payment' => $request->advance_payment ?? 0,
                 'shipping_cost' => $request->shipping_cost,
                 'delivery_notes' => $request->delivery_notes,
                 'status' => 'placed',
@@ -386,6 +390,7 @@ class OrderController extends Controller
                 'id',
                 'order_number',
                 'user_id',
+                'advance_payment',
                 'status',
                 'created_at',
                 'total'
