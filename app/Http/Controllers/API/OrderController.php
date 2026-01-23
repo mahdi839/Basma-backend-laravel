@@ -8,6 +8,7 @@ use App\Models\AbandonedCheckout;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductSize;
+use App\Models\Size;
 use Illuminate\Http\Request;
 use App\Services\FacebookConversionService;
 use Illuminate\Support\Facades\DB;
@@ -141,7 +142,7 @@ class OrderController extends Controller
                 "Quantity",
                 "Unit Price",
                 "Total Price",
-                "Advance Payment", 
+                "Advance Payment",
                 "Variant",
                 "Size",
                 "Color Image",
@@ -187,7 +188,6 @@ class OrderController extends Controller
                     }
                 }
             });
-
             fclose($file);
         };
         return response()->stream($callback, 200, $header);
@@ -474,17 +474,207 @@ class OrderController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Order $order)
+    public function edit($id)
     {
-        //
+        $order = Order::with(['orderItems.size', 'orderItems.product.images'])
+            ->findOrFail($id);
+
+        // Get all products for dropdown
+        $products = Product::with(['images', 'sizes'])
+            ->select(['id', 'title', 'price', 'colors'])
+            ->whereIn('status', ['in-stock', 'prebook'])
+            ->get();
+
+        // Get all sizes
+        $sizes = Size::select(['id', 'size'])->get();
+
+        return response()->json([
+            'message' => 'success',
+            'data' => [
+                'order' => $order,
+                'products' => $products,
+                'sizes' => $sizes
+            ]
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Order $order)
+    public function update(Request $request, $id)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'phone' => 'required|string',
+            'email' => 'nullable|email',
+            'address' => 'required|string',
+            'district' => 'required|string',
+            'shipping_cost' => 'required|numeric',
+            'delivery_notes' => 'nullable|string',
+            'payment_method' => 'required|string',
+            'advance_payment' => 'nullable|numeric|min:0',
+            'status' => 'required|string',
+
+            // Order items
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'nullable|integer',
+            'items.*.product_id' => 'required|integer',
+            'items.*.title' => 'required|string',
+            'items.*.size_id' => 'nullable|integer',
+            'items.*.color' => 'nullable',
+            'items.*.color.id' => 'nullable',
+            'items.*.color.code' => 'nullable|string',
+            'items.*.color.image' => 'nullable|string',
+            'items.*.unitPrice' => 'required|numeric',
+            'items.*.qty' => 'required|integer|min:1',
+            'items.*.totalPrice' => 'required|numeric',
+
+            // Items to delete
+            'deleted_items' => 'nullable|array',
+            'deleted_items.*' => 'integer|exists:order_items,id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $order = Order::with('orderItems')->findOrFail($id);
+
+            // Calculate new totals
+            $subtotal = collect($request->items)->sum('totalPrice');
+            $total = $subtotal + $request->shipping_cost;
+
+            // Update order basic info
+            $order->update([
+                'name' => $request->name,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'district' => $request->district,
+                'shipping_cost' => $request->shipping_cost,
+                'delivery_notes' => $request->delivery_notes,
+                'payment_method' => $request->payment_method,
+                'advance_payment' => $request->advance_payment ?? 0,
+                'status' => $request->status,
+                'subtotal' => $subtotal,
+                'total' => $total,
+            ]);
+
+            // Delete removed items and restore stock
+            if (!empty($validated['deleted_items'])) {
+                foreach ($validated['deleted_items'] as $itemId) {
+                    $item = OrderItem::find($itemId);
+                    if ($item && $item->order_id == $order->id) {
+                        // Restore stock ONLY if size was selected
+                        if ($item->selected_size) {
+                            $productSize = ProductSize::where('product_id', $item->product_id)
+                                ->where('size_id', $item->selected_size)
+                                ->first();
+                            if ($productSize) {
+                                $productSize->increment('stock', $item->qty);
+                            }
+                        }
+                        $item->delete();
+                    }
+                }
+            }
+
+            // Track existing item IDs to know which are new
+            $existingItemIds = $order->orderItems->pluck('id')->toArray();
+
+            foreach ($request->items as $item) {
+                $colorImage = null;
+                if (isset($item['color']) && isset($item['color']['image'])) {
+                    $colorImage = $item['color']['image'];
+                }
+
+                // If item has ID and exists -> UPDATE
+                if (isset($item['id']) && in_array($item['id'], $existingItemIds)) {
+                    $orderItem = OrderItem::find($item['id']);
+
+                    // Calculate stock changes
+                    $oldQty = $orderItem->qty;
+                    $oldSizeId = $orderItem->selected_size;
+                    $newQty = $item['qty'];
+                    $newSizeId = $item['size_id'] ?? null;
+
+                    // Restore old stock ONLY if OLD item had a size
+                    if ($oldSizeId) {
+                        $oldProductSize = ProductSize::where('product_id', $orderItem->product_id)
+                            ->where('size_id', $oldSizeId)
+                            ->first();
+                        if ($oldProductSize) {
+                            $oldProductSize->increment('stock', $oldQty);
+                        }
+                    }
+
+                    // Update item
+                    $orderItem->update([
+                        'product_id' => $item['product_id'],
+                        'title' => $item['title'],
+                        'selected_size' => $newSizeId,
+                        'unitPrice' => $item['unitPrice'],
+                        'qty' => $newQty,
+                        'totalPrice' => $item['totalPrice'],
+                        'colorImage' =>  $colorImage ? url($colorImage):"",
+                    ]);
+
+                    // Deduct new stock ONLY if NEW item has a size
+                    if ($newSizeId) {
+                        $newProductSize = ProductSize::where('product_id', $item['product_id'])
+                            ->where('size_id', $newSizeId)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($newProductSize) {
+                            if ($newProductSize->stock < $newQty) {
+                                throw new \Exception("Insufficient stock for {$item['title']}. Available: {$newProductSize->stock}, Requested: {$newQty}");
+                            }
+                            $newProductSize->decrement('stock', $newQty);
+                        }
+                    }
+                }
+                // No ID or doesn't exist -> CREATE NEW
+                else {
+                    // Create the order item first
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $item['product_id'],
+                        'title' => $item['title'],
+                        'selected_size' => $item['size_id'] ?? null,
+                        'unitPrice' => $item['unitPrice'],
+                        'qty' => $item['qty'],
+                        'totalPrice' => $item['totalPrice'],
+                        'colorImage' =>  $colorImage ? url($colorImage): "",
+                    ]);
+
+                    // ONLY manage stock if size is selected
+                    if (!empty($item['size_id'])) {
+                        $productSize = ProductSize::where('product_id', $item['product_id'])
+                            ->where('size_id', $item['size_id'])
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($productSize) {
+                            if ($productSize->stock < $item['qty']) {
+                                throw new \Exception("Insufficient stock for {$item['title']}. Available: {$productSize->stock}, Requested: {$item['qty']}");
+                            }
+                            $productSize->decrement('stock', $item['qty']);
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Order updated successfully',
+                'order' => $order->fresh()->load('orderItems.size')
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Order update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

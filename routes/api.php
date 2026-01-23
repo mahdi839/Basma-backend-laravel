@@ -181,7 +181,11 @@ Route::middleware(['permission:view orders'])
     ->get('orders', [OrderController::class, 'index']);
 
 Route::middleware(['permission:edit orders'])
+    ->get('/orders/{id}/edit', [OrderController::class, 'edit']);
+
+Route::middleware(['permission:update orders'])
     ->put('orders/{id}', [OrderController::class, 'update']);
+
 Route::middleware(['permission:order show'])
     ->get('orders/{id}', [OrderController::class, 'show']);
 
@@ -308,4 +312,3 @@ Route::prefix('customers')->group(function () {
 // Dashboard summary (Permission Protected)
 Route::middleware(['auth:sanctum', 'permission:view dashboard summary'])
     ->get('/dashboard/summary', [DashboardSummaryController::class, 'summary']);
-
