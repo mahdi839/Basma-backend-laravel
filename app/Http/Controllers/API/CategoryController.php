@@ -13,19 +13,25 @@ use Illuminate\Support\Str;
 class CategoryController extends Controller
 {
     use ClearsHomeCache;
-    public function index()
+    public function index(Request $request)
     {
-        $categories = Category::with('parent')
-            ->orderBy('priority')
-            ->paginate(30);
+        $query = Category::with('parent')->orderBy('priority');
+
+        // Search functionality
+        if ($request->has('search') && $request->search != '') {
+            $searchTerm = $request->search;
+            $query->where('name', 'LIKE', "%{$searchTerm}%");
+        }
+
+        $categories = $query->paginate(50);
 
         return response()->json($categories);
     }
 
-     public function product_add_category()
+    public function product_add_category()
     {
-        return $categories = Category::get(['id','name']);
-   
+        return $categories = Category::get(['id', 'name']);
+
         return response()->json($categories);
     }
 
@@ -33,13 +39,13 @@ class CategoryController extends Controller
     {
         $cacheKey = "categoryHomePage";
         // Get all root categories with ALL nested children recursively
-        $categories = Cache::remember($cacheKey,86400,function(){
+        $categories = Cache::remember($cacheKey, 86400, function () {
             return Category::whereNull('parent_id')
-            ->with('allChildren') // This will recursively load all nested children
-            ->orderBy('priority')
-            ->get();
+                ->with('allChildren') // This will recursively load all nested children
+                ->orderBy('priority')
+                ->get();
         });
-            
+
         return response()->json($categories);
     }
 
@@ -62,7 +68,7 @@ class CategoryController extends Controller
             'size_guide_type' => $request->size_guide_type,
         ]);
         $this->clearHomeCategoryCach();
-          // Simple cache forget
+        // Simple cache forget
         Cache::forget('categoryHomePage');
         return response()->json($category, 201);
     }
@@ -104,29 +110,30 @@ class CategoryController extends Controller
             'size_guide_type' => $request->size_guide_type ?? $category->size_guide_type,
         ]);
         $this->clearHomeCategoryCach();
-          // Simple cache forget
+        // Simple cache forget
         Cache::forget('categoryHomePage');
         return response()->json($category);
     }
 
-    public function productSizeGuideType ($id){
-      $product = Product::with('category:id,name,size_guide_type')->where('id',$id)->first('id');
-      return response()->json($product->category[0]);
+    public function productSizeGuideType($id)
+    {
+        $product = Product::with('category:id,name,size_guide_type')->where('id', $id)->first('id');
+        return response()->json($product->category[0]);
     }
 
     public function destroy($id)
     {
         $category = Category::findOrFail($id);
-        
+
         // Check if category has children
         if ($category->children()->count() > 0) {
             return response()->json([
                 'message' => 'Cannot delete category with subcategories. Please delete or reassign subcategories first.'
             ], 422);
-        }   
+        }
         $category->delete();
         $this->clearHomeCategoryCach();
-          // Simple cache forget
+        // Simple cache forget
         Cache::forget('categoryHomePage');
         return response()->json(['message' => 'Category deleted successfully']);
     }
@@ -137,14 +144,14 @@ class CategoryController extends Controller
     private function isDescendant($categoryId, $potentialAncestorId)
     {
         $category = Category::find($potentialAncestorId);
-        
+
         while ($category && $category->parent_id) {
             if ($category->parent_id == $categoryId) {
                 return true;
             }
             $category = $category->parent;
         }
-        
+
         return false;
     }
 }
