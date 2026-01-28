@@ -17,7 +17,7 @@ class CategoryController extends Controller
     {
         $categories = Category::with('parent')
             ->orderBy('priority')
-            ->paginate(20);
+            ->paginate(30);
 
         return response()->json($categories);
     }
