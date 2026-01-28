@@ -4,19 +4,16 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\AbandonedCheckout;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductSize;
 use App\Models\Size;
-use Illuminate\Http\Request;
 use App\Services\FacebookConversionService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class OrderController extends Controller
 {
-
     protected $facebookService;
 
     public function __construct(FacebookConversionService $facebookService)
@@ -73,8 +70,10 @@ class OrderController extends Controller
         $orders->getCollection()->transform(function ($order) {
             $orderCount = Order::where('phone', $order->phone)->count();
             $order->customer_type = $orderCount > 1 ? 'Repeat Customer' : 'New';
+
             return $order;
         });
+
         return response()->json($orders);
     }
 
@@ -119,8 +118,7 @@ class OrderController extends Controller
                 });
             });
 
-
-        $date = Date('Y-m-d');
+        $date = date('Y-m-d');
         $fileName = "orders_{$date}.csv";
 
         $header = [
@@ -132,24 +130,24 @@ class OrderController extends Controller
 
             // CSV header
             fputcsv($file, [
-                "Order Date",
-                "Customer Name",
-                "Phone",
-                "Address",
-                "District",
-                "Customer Type",
-                "Product Title",
-                "Quantity",
-                "Unit Price",
-                "Total Price",
-                "Advance Payment",
-                "Variant",
-                "Size",
-                "Color Image",
-                "Shipping Cost",
-                "Payment Method",
-                "Order Total",
-                "Status"
+                'Order Date',
+                'Customer Name',
+                'Phone',
+                'Address',
+                'District',
+                'Customer Type',
+                'Product Title',
+                'Quantity',
+                'Unit Price',
+                'Total Price',
+                'Variant',
+                'Size',
+                'Color Image',
+                'Shipping Cost',
+                'Payment Method',
+                'Order Total',
+                'Advance Payment',
+                'Status',
             ]);
 
             $query->chunk(100, function ($orders) use ($file) {
@@ -162,7 +160,7 @@ class OrderController extends Controller
                     foreach ($order->orderItems as $item) {
 
                         $variant = $item->selected_variant
-                            ? ($item->selected_variant['attribute'] . ': ' . $item->selected_variant['value'])
+                            ? ($item->selected_variant['attribute'].': '.$item->selected_variant['value'])
                             : '';
 
                         fputcsv($file, [
@@ -190,6 +188,7 @@ class OrderController extends Controller
             });
             fclose($file);
         };
+
         return response()->stream($callback, 200, $header);
     }
 
@@ -203,14 +202,13 @@ class OrderController extends Controller
         return response()->json([
             'data' => [
                 'products' => $products,
-            ]
+            ],
         ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-
     public function store(Request $request)
     {
         // Validate request data
@@ -247,7 +245,7 @@ class OrderController extends Controller
 
             // Create order
             $order = Order::create([
-                'order_number' => 'ORD-' . date('Ymd') . '-' . strtoupper(uniqid()),
+                'order_number' => 'ORD-'.date('Ymd').'-'.strtoupper(uniqid()),
                 'name' => $request->name,
                 'phone' => $request->phone,
                 'user_id' => $request->user_id ?? null,
@@ -274,8 +272,8 @@ class OrderController extends Controller
                         ->where('size_id', $item['size'])
                         ->lockForUpdate() // 🔒 IMPORTANT
                         ->first();
-                    if (!$productSize) {
-                        throw new \Exception("Product size not found.");
+                    if (! $productSize) {
+                        throw new \Exception('Product size not found.');
                     }
 
                     if ($productSize->stock < $item['qty']) {
@@ -295,15 +293,15 @@ class OrderController extends Controller
                     'unitPrice' => $item['unitPrice'],
                     'qty' => $item['qty'],
                     'totalPrice' => $item['totalPrice'],
-                    'colorImage' => $item['colorImage'] ?? "",
+                    'colorImage' => $item['colorImage'] ?? '',
                 ]);
 
                 // Prepare Facebook data
-                $contentIds[] = (string)$item['id'];
+                $contentIds[] = (string) $item['id'];
                 $contents[] = [
-                    'id' => (string)$item['id'],
+                    'id' => (string) $item['id'],
                     'quantity' => $item['qty'],
-                    'item_price' => $item['unitPrice']
+                    'item_price' => $item['unitPrice'],
                 ];
             }
 
@@ -325,20 +323,21 @@ class OrderController extends Controller
                     'contents' => $contents,
                     'content_type' => 'product',
                     'num_items' => count($request->cart),
-                    'event_id' => 'order_' . $order->order_number, // For deduplication
+                    'event_id' => 'order_'.$order->order_number, // For deduplication
                 ],
                 $request->event_source_url ?? null
             );
 
             return response()->json([
                 'message' => 'Order created successfully',
-                'order_number' => $order->order_number
+                'order_number' => $order->order_number,
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'message' => 'Order creation failed',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -349,8 +348,9 @@ class OrderController extends Controller
         $order->update([
             'status' => $request->status,
         ]);
+
         return response()->json([
-            'message' => 'Status Updated Successfully!'
+            'message' => 'Status Updated Successfully!',
         ]);
     }
 
@@ -365,19 +365,18 @@ class OrderController extends Controller
         $order = Order::with(['orderItems.size'])->findOrFail($id);
 
         return response()->json([
-            'order' => $order
+            'order' => $order,
         ]);
     }
-
 
     public function myOrders(Request $request)
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized',
             ], 401);
         }
 
@@ -393,7 +392,7 @@ class OrderController extends Controller
                 'advance_payment',
                 'status',
                 'created_at',
-                'total'
+                'total',
             ])
             ->with([
                 'orderItems' => function ($q) {
@@ -404,7 +403,7 @@ class OrderController extends Controller
                         'qty',
                         'unitPrice',
                         'title',
-                        'totalPrice'
+                        'totalPrice',
                     ]);
                 },
                 'orderItems.product' => function ($q) {
@@ -435,7 +434,7 @@ class OrderController extends Controller
 
         return response()->json([
             'status' => true,
-            'data' => $orders
+            'data' => $orders,
         ], 200);
     }
 
@@ -446,10 +445,10 @@ class OrderController extends Controller
     {
         $user = auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unauthorized'
+                'message' => 'Unauthorized',
             ], 401);
         }
 
@@ -458,16 +457,16 @@ class OrderController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$order) {
+        if (! $order) {
             return response()->json([
                 'status' => false,
-                'message' => 'Order not found'
+                'message' => 'Order not found',
             ], 404);
         }
 
         return response()->json([
             'status' => true,
-            'data' => $order
+            'data' => $order,
         ], 200);
     }
 
@@ -493,8 +492,8 @@ class OrderController extends Controller
             'data' => [
                 'order' => $order,
                 'products' => $products,
-                'sizes' => $sizes
-            ]
+                'sizes' => $sizes,
+            ],
         ]);
     }
 
@@ -558,7 +557,7 @@ class OrderController extends Controller
             ]);
 
             // Delete removed items and restore stock
-            if (!empty($validated['deleted_items'])) {
+            if (! empty($validated['deleted_items'])) {
                 foreach ($validated['deleted_items'] as $itemId) {
                     $item = OrderItem::find($itemId);
                     if ($item && $item->order_id == $order->id) {
@@ -613,7 +612,7 @@ class OrderController extends Controller
                         'unitPrice' => $item['unitPrice'],
                         'qty' => $newQty,
                         'totalPrice' => $item['totalPrice'],
-                        'colorImage' =>  $colorImage ? url($colorImage):"",
+                        'colorImage' => $colorImage ? url($colorImage) : '',
                     ]);
 
                     // Deduct new stock ONLY if NEW item has a size
@@ -642,11 +641,11 @@ class OrderController extends Controller
                         'unitPrice' => $item['unitPrice'],
                         'qty' => $item['qty'],
                         'totalPrice' => $item['totalPrice'],
-                        'colorImage' =>  $colorImage ? url($colorImage): "",
+                        'colorImage' => $colorImage ? url($colorImage) : '',
                     ]);
 
                     // ONLY manage stock if size is selected
-                    if (!empty($item['size_id'])) {
+                    if (! empty($item['size_id'])) {
                         $productSize = ProductSize::where('product_id', $item['product_id'])
                             ->where('size_id', $item['size_id'])
                             ->lockForUpdate()
@@ -666,13 +665,14 @@ class OrderController extends Controller
 
             return response()->json([
                 'message' => 'Order updated successfully',
-                'order' => $order->fresh()->load('orderItems.size')
+                'order' => $order->fresh()->load('orderItems.size'),
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'message' => 'Order update failed',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
