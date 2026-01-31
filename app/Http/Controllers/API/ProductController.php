@@ -62,7 +62,7 @@ class ProductController extends Controller
 
             // images
             'image'   => 'required|array',
-            'image.*' =>  'image|max:1024',
+            'image.*' => 'image|max:3072',
 
             // categories
             'categories'               => 'nullable|array',
@@ -74,8 +74,8 @@ class ProductController extends Controller
             // COLORS with color codes and images
             'colors'              => 'nullable|array',
             'colors.*.code'       => 'nullable|string',  // hex code like #FF5733
-            'colors.*.image'      => 'required|image|max:1024',
-
+            'colors.*.image' => 'required|image|max:3072',
+            'colors.*.name' => 'nullable|string|max:50',
             // SIZES with prices and stock
             'sizes'              => 'nullable|array',
             'sizes.*.size_id'    => 'required|exists:sizes,id',
@@ -94,6 +94,7 @@ class ProductController extends Controller
                 $colorItem = [
                     'id' => $index + 1,
                     'code' => $color['code'],
+                    'name' => $color['name'] ?? null,
                 ];
 
                 // Handle color image if provided
@@ -200,7 +201,7 @@ class ProductController extends Controller
 
             // images
             'image'   => 'nullable|array',
-            'image.*' => 'required|image|max:1024',
+            'image.*' => 'image|max:3072',
 
             // images to delete
             'deleted_images'   => 'nullable|array',
@@ -213,12 +214,14 @@ class ProductController extends Controller
             // base price
             'price' => 'nullable|integer|min:0',
 
-            // COLORS
+            // COLORS - image is optional if existing_image is provided
             'colors'              => 'nullable|array',
+            'colors.*.id'         => 'nullable|integer',
             'colors.*.code'       => 'nullable|string',
-            'colors.*.image'      => 'nullable|image|max:1024',
-            'colors.*.existing_image' => 'nullable|string', // for keeping existing images
-
+            'colors.*.name'       => 'nullable|string|max:50',
+            'colors.*.image'      => 'nullable|image|max:3072',
+            'colors.*.existing_image' => 'nullable|string',
+            
             // SIZES
             'sizes'              => 'nullable|array',
             'sizes.*.size_id'    => 'required|exists:sizes,id',
@@ -254,7 +257,8 @@ class ProductController extends Controller
 
                 $colorItem = [
                     'id'   => $newId,
-                    'code' => $color['code'],
+                    'code' => $color['code'] ?? '#000000',
+                    'name' => $color['name'] ?? null,
                 ];
 
                 // New image uploaded
@@ -265,6 +269,14 @@ class ProductController extends Controller
 
                     $color['image']->move($destination, $imageName);
                     $colorItem['image'] = 'uploads/color_images/' . $imageName;
+                    
+                    // Delete old color image if exists
+                    if (!empty($color['existing_image'])) {
+                        $oldPath = public_path($color['existing_image']);
+                        if (file_exists($oldPath)) {
+                            @unlink($oldPath);
+                        }
+                    }
                 } elseif (!empty($color['existing_image'])) {
                     // Keep existing image
                     $colorItem['image'] = $color['existing_image'];
