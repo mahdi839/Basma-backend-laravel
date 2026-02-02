@@ -16,22 +16,23 @@ class Product extends Model
 
     protected static function boot()
     {
-         parent::boot();
-         static::creating(function($product){
-            if(empty($product->sku)){
+        parent::boot();
+        static::creating(function ($product) {
+            if (empty($product->sku)) {
                 $product->sku = self::generateSku();
             }
-         });
+        });
     }
 
-      /**
+    /**
      * Generate a unique SKU
      */
 
-    public static function generateSku (){
-        do{
-          $sku = "PRD-". strtoupper(Str::random(6));
-        }while(self::where('sku',$sku)->exists());
+    public static function generateSku()
+    {
+        do {
+            $sku = "PRD-" . strtoupper(Str::random(6));
+        } while (self::where('sku', $sku)->exists());
         return $sku;
     }
 
@@ -43,7 +44,7 @@ class Product extends Model
     public function sizes()
     {
         return $this->belongsToMany(Size::class, 'product_sizes')
-            ->withPivot('price','stock')
+            ->withPivot('price', 'stock')
             ->withTimestamps();
     }
 
@@ -62,8 +63,13 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class);
     }
 
-     public function orderItems()
+    public function orderItems()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function specifications()
+    {
+        return $this->hasMany(ProductSpecification::class)->orderBy('order');
     }
 }

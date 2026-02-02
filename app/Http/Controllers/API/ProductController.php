@@ -22,7 +22,7 @@ class ProductController extends Controller
         $slug = $request->query('slug', '');
         $search = $request->search;
         $status = $request->query('status', '');
-        $allProducts = Product::with(['images', 'sizes', 'faqs', 'category'])
+        $allProducts = Product::with(['images', 'sizes', 'faqs', 'category', 'specifications'])
             ->when($slug, function ($q) use ($slug) {
                 $q->whereHas('category', function ($query) use ($slug) {
                     $query->where('slug', $slug);
@@ -85,6 +85,11 @@ class ProductController extends Controller
             // FAQs
             'question' => 'nullable|array',
             'answer'   => 'nullable|array',
+
+            // SPECIFICATIONS
+            'specifications'         => 'nullable|array',
+            'specifications.*.key'   => 'required|string',
+            'specifications.*.value' => 'required|string',
         ]);
 
         // Handle colors with images
@@ -161,10 +166,22 @@ class ProductController extends Controller
                 ]);
             }
         }
+
+        // SPECIFICATIONS
+        if (!empty($validated['specifications'])) {
+            foreach ($validated['specifications'] as $index => $spec) {
+                $product->specifications()->create([
+                    'key'   => $spec['key'],
+                    'value' => $spec['value'],
+                    'order' => $index,
+                ]);
+            }
+        }
+
         $this->clearHomeCategoryCach();
         return response()->json([
             'message' => 'product created successfully',
-            'data'    => $product->load('images', 'sizes', 'faqs', 'category'),
+            'data'    => $product->load('images', 'sizes', 'faqs', 'category', 'specifications'),
         ], 201);
     }
 
@@ -176,7 +193,7 @@ class ProductController extends Controller
         $cacheKey = "product:{$id}";
 
         $product = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($id) {
-            return Product::with(['images', 'sizes', 'faqs', 'category'])
+            return Product::with(['images', 'sizes', 'faqs', 'category', 'specifications'])
                 ->findOrFail($id);
         });
 
@@ -232,9 +249,14 @@ class ProductController extends Controller
             'faqs'            => 'nullable|array',
             'faqs.*.question' => 'required',
             'faqs.*.answer'   => 'required',
+
+            // SPECIFICATIONS
+            'specifications'         => 'nullable|array',
+            'specifications.*.key'   => 'required|string',
+            'specifications.*.value' => 'required|string',
         ]);
 
-        $product = Product::with(['images', 'sizes', 'faqs'])->findOrFail($id);
+        $product = Product::with(['images', 'sizes', 'faqs', 'specifications'])->findOrFail($id);
 
         // Handle colors with images
         $colorsData = [];
@@ -329,20 +351,23 @@ class ProductController extends Controller
         }
 
         // SIZES — sync with pivot data
-        if ($request->has('sizes')) {
-            $sizes = $validated['sizes'] ?? [];
-            $sizesData = [];
-
-            foreach ($sizes as $size) {
-                $sizesData[$size['size_id']] = [
-                    'price' => $size['price'],
-                    'stock' => $size['stock'],
-                ];
+        // Always sync sizes, even if array is empty (to allow deletion of all sizes)
+        $sizesData = [];
+        
+        if (!empty($validated['sizes'])) {
+            foreach ($validated['sizes'] as $size) {
+                // Only add if size_id is valid (not empty string)
+                if (!empty($size['size_id'])) {
+                    $sizesData[$size['size_id']] = [
+                        'price' => $size['price'] ?? null,
+                        'stock' => $size['stock'] ?? 0,
+                    ];
+                }
             }
-            $product->sizes()->sync($sizesData);
-        } else {
-            $product->sizes()->sync([]);
         }
+        
+        // This will sync the sizes - if $sizesData is empty, it will remove all sizes
+        $product->sizes()->sync($sizesData);
 
         // FAQs
         if ($request->has('faqs')) {
@@ -358,11 +383,26 @@ class ProductController extends Controller
         } else {
             $product->faqs()->delete();
         }
+
+        // SPECIFICATIONS
+        if ($request->has('specifications')) {
+            $product->specifications()->delete();
+            if (!empty($validated['specifications'])) {
+                foreach ($validated['specifications'] as $index => $spec) {
+                    $product->specifications()->create([
+                        'key'   => $spec['key'],
+                        'value' => $spec['value'],
+                        'order' => $index,
+                    ]);
+                }
+            }
+        }
+
         $this->clearHomeCategoryCach();
         $this->clearRelatedCache($id);
         return response()->json([
             'message' => 'Product updated successfully',
-            'data'    => $product->fresh()->load('images', 'sizes', 'faqs', 'category'),
+            'data'    => $product->fresh()->load('images', 'sizes', 'faqs', 'category', 'specifications'),
         ]);
     }
 
@@ -399,7 +439,7 @@ class ProductController extends Controller
      */
     public function destroy(string $id)
     {
-        $product = Product::with(['images', 'sizes', 'faqs', 'category'])->findOrFail($id);
+        $product = Product::with(['images', 'sizes', 'faqs', 'category', 'specifications'])->findOrFail($id);
 
         // Delete image files + rows
         foreach ($product->images as $image) {
@@ -424,6 +464,7 @@ class ProductController extends Controller
 
         // Detach/delete relations
         $product->faqs()->delete();
+        $product->specifications()->delete();
         $product->sizes()->detach();
         $product->category()->detach();
 
