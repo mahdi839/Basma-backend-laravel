@@ -338,12 +338,17 @@ class ProductController extends Controller
         }
 
         // New images
+        $maxPosition = $product->images()->max('position')??-1;
         if ($request->hasFile('image')) {
             foreach ($request->file('image') as $image) {
+                $maxPosition++;
                 $imageName   = $image->hashName();
                 $destination = public_path('uploads/product_photos');
                 $image->move($destination, $imageName);
-                $product->images()->create(['image' => 'uploads/product_photos/' . $imageName]);
+                $product->images()->create([
+                    'image' => 'uploads/product_photos/' . $imageName,
+                    'position'=>$maxPosition
+                    ]);
             }
         }
 
@@ -353,7 +358,6 @@ class ProductController extends Controller
             $product->category()->sync($categoryIds);
         }
 
-        // SIZES — sync with pivot data
         // Always sync sizes, even if array is empty (to allow deletion of all sizes)
         $sizesData = [];
         
