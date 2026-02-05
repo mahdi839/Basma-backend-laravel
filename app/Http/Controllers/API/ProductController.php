@@ -5,10 +5,12 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\Size;
 use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -133,14 +135,14 @@ class ProductController extends Controller
         ]);
 
         // Product images
-        foreach ($validated['image'] as $index=> $image) {
+        foreach ($validated['image'] as $index => $image) {
             $imageName   = $image->hashName();
             $destination = public_path('uploads/product_photos');
             $image->move($destination, $imageName);
             $product->images()->create([
                 'image' => 'uploads/product_photos/' . $imageName,
-                'position'=>$index
-                ]);
+                'position' => $index
+            ]);
         }
 
         // Categories
@@ -241,7 +243,7 @@ class ProductController extends Controller
             'colors.*.name'       => 'nullable|string|max:50',
             'colors.*.image'      => 'nullable|image|max:3072',
             'colors.*.existing_image' => 'nullable|string',
-            
+
             // SIZES
             'sizes'              => 'nullable|array',
             'sizes.*.size_id'    => 'required|exists:sizes,id',
@@ -257,6 +259,12 @@ class ProductController extends Controller
             'specifications'         => 'nullable|array',
             'specifications.*.key'   => 'required|string',
             'specifications.*.value' => 'required|string',
+
+            // image order
+            'image_order' => 'nullable|array',
+            'image_order.*.id' => 'required|exists:product_images,id',
+            'image_order.*.position' => 'required|integer',
+
         ]);
 
         $product = Product::with(['images', 'sizes', 'faqs', 'specifications'])->findOrFail($id);
@@ -294,7 +302,7 @@ class ProductController extends Controller
 
                     $color['image']->move($destination, $imageName);
                     $colorItem['image'] = 'uploads/color_images/' . $imageName;
-                    
+
                     // Delete old color image if exists
                     if (!empty($color['existing_image'])) {
                         $oldPath = public_path($color['existing_image']);
@@ -338,7 +346,7 @@ class ProductController extends Controller
         }
 
         // New images
-        $maxPosition = $product->images()->max('position')??-1;
+        $maxPosition = $product->images()->max('position') ?? -1;
         if ($request->hasFile('image')) {
             foreach ($request->file('image') as $image) {
                 $maxPosition++;
@@ -347,10 +355,19 @@ class ProductController extends Controller
                 $image->move($destination, $imageName);
                 $product->images()->create([
                     'image' => 'uploads/product_photos/' . $imageName,
-                    'position'=>$maxPosition
-                    ]);
+                    'position' => $maxPosition
+                ]);
             }
         }
+
+        if ($request->has('image_order')) {
+            foreach ($request->image_order as $img) {
+                ProductImage::where('id', $img['id'])
+                    ->where('product_id', $product->id)
+                    ->update(['position' => $img['position']]);
+            }
+        }
+
 
         // CATEGORIES
         if (!empty($validated['categories'])) {
@@ -360,7 +377,7 @@ class ProductController extends Controller
 
         // Always sync sizes, even if array is empty (to allow deletion of all sizes)
         $sizesData = [];
-        
+
         if (!empty($validated['sizes'])) {
             foreach ($validated['sizes'] as $size) {
                 // Only add if size_id is valid (not empty string)
@@ -372,7 +389,7 @@ class ProductController extends Controller
                 }
             }
         }
-        
+
         // This will sync the sizes - if $sizesData is empty, it will remove all sizes
         $product->sizes()->sync($sizesData);
 
@@ -482,6 +499,31 @@ class ProductController extends Controller
         return response()->json([
             'message' => 'Product deleted successfully',
         ], 200);
+    }
+
+    public function imageReorder(Request $request, $productId)
+    {
+
+        $request->validate([
+            'images' => 'required|array',
+            'images.*.id' => [
+                'required',
+                Rule::exists('product_images', 'id')
+                    ->where('product_id', $productId),
+            ],
+            'images.*.position' => 'required|integer|min:0',
+        ]);
+
+        DB::transaction(function () use ($request, $productId) {
+            foreach ($request->images as $img) {
+                ProductImage::where('id', $img['id'])
+                    ->where('product_id', $productId)
+                    ->update(['position' => $img['position']]);
+            }
+        });
+
+        $this->clearHomeCategoryCach();
+        return response()->json(['message' => 'Images reordered']);
     }
 
     public function category_products(Request $request, $id)

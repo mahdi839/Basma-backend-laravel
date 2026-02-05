@@ -20,7 +20,7 @@ class PermissionSeeder extends Seeder
             'create products',
             'edit products',
             'delete products',
-
+            'reOrderImage',
             // Order permissions
             'view orders',
             'create orders',

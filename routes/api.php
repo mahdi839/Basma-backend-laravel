@@ -146,6 +146,8 @@ Route::middleware(['permission:edit products'])
 
 Route::middleware(['permission:delete products'])
     ->delete('products/{id}', [ProductController::class, 'destroy']);
+Route::middleware(['permission:reOrderImage'])->post('products/{id}/images/reorder', [ProductController::class, 'reorderImages']);
+
 
 
 // --------------------------
