@@ -133,11 +133,14 @@ class ProductController extends Controller
         ]);
 
         // Product images
-        foreach ($validated['image'] as $image) {
+        foreach ($validated['image'] as $index=> $image) {
             $imageName   = $image->hashName();
             $destination = public_path('uploads/product_photos');
             $image->move($destination, $imageName);
-            $product->images()->create(['image' => 'uploads/product_photos/' . $imageName]);
+            $product->images()->create([
+                'image' => 'uploads/product_photos/' . $imageName,
+                'position'=>$index
+                ]);
         }
 
         // Categories

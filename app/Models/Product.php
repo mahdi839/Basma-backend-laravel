@@ -41,6 +41,10 @@ class Product extends Model
         return $this->hasMany(ProductImage::class);
     }
 
+    public function thumbnail(){
+        $this->hasOne(ProductImage::class)->orderBy('position');
+    }
+
     public function sizes()
     {
         return $this->belongsToMany(Size::class, 'product_sizes')
