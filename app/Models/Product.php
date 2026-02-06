@@ -14,27 +14,7 @@ class Product extends Model
 
     protected $guarded = [];
 
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($product) {
-            if (empty($product->sku)) {
-                $product->sku = self::generateSku();
-            }
-        });
-    }
-
-    /**
-     * Generate a unique SKU
-     */
-
-    public static function generateSku()
-    {
-        do {
-            $sku = "PRD-" . strtoupper(Str::random(6));
-        } while (self::where('sku', $sku)->exists());
-        return $sku;
-    }
+   
 
     public function images()
     {

@@ -72,7 +72,7 @@ class ProductController extends Controller
 
             // base price (optional if sizes have prices)
             'price' => 'nullable|integer|min:0',
-
+            'sku' => 'required',
             // COLORS with color codes and images
             'colors'              => 'nullable|array',
             'colors.*.code'       => 'nullable|string',  // hex code like #FF5733
@@ -127,6 +127,7 @@ class ProductController extends Controller
             'title'             => $validated['title'],
             'short_description' => $validated['short_description'],
             'price'             => $validated['price'] ?? null,
+            'sku'             => $validated['sku'],
             'description'       => $validated['description'] ?? null,
             'video_url'         => $validated['video_url'] ?? null,
             'discount'          => $validated['discount'] ?? null,
@@ -235,7 +236,7 @@ class ProductController extends Controller
 
             // base price
             'price' => 'nullable|integer|min:0',
-
+            'sku' => 'required',
             // COLORS - image is optional if existing_image is provided
             'colors'              => 'nullable|array',
             'colors.*.id'         => 'nullable|integer',
@@ -323,6 +324,7 @@ class ProductController extends Controller
         $product->update([
             'title'             => $validated['title'],
             'short_description' => $validated['short_description'],
+            'sku' =>               $validated['sku'],
             'video_url'         => $validated['video_url'] ?? null,
             'description'       => $validated['description'] ?? null,
             'discount'          => $validated['discount'] ?? null,
