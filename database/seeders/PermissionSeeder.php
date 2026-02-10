@@ -37,6 +37,12 @@ class PermissionSeeder extends Seeder
             'edit categories',
             'delete categories',
 
+            // sizes
+            'view sizes',
+            'create sizes',
+            'edit sizes',
+            'delete sizes',
+
             // Banner permissions
             'view banners',
             'create banners',
