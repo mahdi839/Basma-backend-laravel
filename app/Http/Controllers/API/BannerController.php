@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Banner;
+use App\Models\BannerImage;
 use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -13,59 +14,60 @@ use Illuminate\Support\Facades\Storage;
 class BannerController extends Controller
 {
     use ClearsHomeCache;
-    /**
-     * Display a listing of the resource.
-     */
+
+    /* =========================================================
+        GET HERO BANNER
+    ========================================================= */
+
     public function index()
     {
-        $bannersData = Banner::with(['banner_images', 'category', 'slot'])->paginate(20);
-        return response()->json($bannersData);
+        $banner = Banner::with('banner_images')
+            ->where('type', 'hero')
+            ->first();
+
+        if (!$banner) {
+            return response()->json([
+                'data' => [],
+                'message' => 'No banner created yet'
+            ]);
+        }
+
+        return response()->json([
+            'data' => [$banner],
+            'banner_images' => $banner->banner_images
+        ]);
     }
 
-    public function frontendIndex()
-    {
-        $bannersData = Cache::remember('frontend_banners', 60 * 60, function () {
-            return Banner::with(['banner_images:id,banner_id,path', 'category:id,name', 'slot:id,slot_name'])
-                ->select('id', 'link', 'type', 'category_id', 'products_slots_id')
-                ->get();
-        });
-        return response()->json($bannersData);
-    }
+    /* =========================================================
+        STORE (CREATE HERO)
+    ========================================================= */
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-
-        $request->validate(
-            [
-                'link' => 'nullable',
-                'type' => 'required',
-                'category_id' => 'required_if:type,category|exists:categories,id',
-                'products_slots_id' => 'required_if:type,slot|exists:products_slots,id',
-                'images' => 'required|array',
-                'images.*' => 'required|image|max:1024',
-            ],
-            [
-                'category_id.required_if' => 'Category Field Is Required',
-                'products_slots_id.required_if' => 'Slot Field Is Required'
-            ]
-
-        );
+        $request->validate([
+            'banners' => 'required|array',
+            'banners.*.image' => 'required|image|max:2048',
+            'banners.*.link' => 'nullable|string'
+        ]);
 
         $banner = DB::transaction(function () use ($request) {
-            $banner =  Banner::create([
-                'link' => $request->link,
-                'type' => $request->type,
-                'category_id' => $request->category_id,
-                'products_slots_id' => $request->products_slots_id,
+
+            $banner = Banner::firstOrCreate([
+                'type' => 'hero'
             ]);
 
-            foreach ($request->file('images') as $image) {
-                $path_name = $image->store('banner/images', 'public');
+            $uploadedBanners = $request->file('banners');
+
+            foreach ($uploadedBanners as $index => $bannerFile) {
+
+                $imageFile = $bannerFile['image'];
+                $link = $request->input("banners.$index.link");
+
+                $path = $imageFile->store('banner/images', 'public');
+
                 $banner->banner_images()->create([
-                    'path' => $path_name
+                    'path' => $path,
+                    'link' => $link
                 ]);
             }
 
@@ -74,88 +76,92 @@ class BannerController extends Controller
 
         Cache::forget('frontend_banners');
         $this->clearHomeCategoryCach();
-        return response()->json($banner);
+
+        return response()->json($banner, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show($id)
+    /* =========================================================
+        UPDATE (EDIT HERO)
+    ========================================================= */
+
+    public function update(Request $request, $id)
     {
-        $banner = Banner::with('banner_images', 'slot')->findOrFail($id);
-        return response()->json($banner);
-    }
-
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request,  $id)
-    {
-
         $request->validate([
-            'link' => 'nullable',
-            'type' => 'required|in:hero,slot,category',
-            'category_id' => 'nullable|required_if:type,category|exists:categories,id',
-            'products_slots_id' => 'nullable|required_if:type,slot|exists:products_slots,id',
-            'images' => 'sometimes|array',
-            'images.*' => 'required|image|max:1024',
-            'delete_images' => 'sometimes|array',
-            'delete_images.*' => 'exists:banner_images,id'
+            'banners' => 'nullable|array',
+            'banners.*.image' => 'nullable|image|max:2048',
+            'banners.*.link' => 'nullable|string',
+            'image_links' => 'nullable|array',
+            'image_links.*.id' => 'required|exists:banner_images,id',
+            'image_links.*.link' => 'nullable|string'
         ]);
 
-        $singleBanner = Banner::findOrFail($id);
+        $banner = Banner::findOrFail($id);
 
-        $banner =  DB::transaction(function () use ($request, $singleBanner) {
-            $singleBanner->update([
-                'link' => $request->link,
-                'type' => $request->type,
-                'category_id' => $request->category_id,
-                'products_slots_id' => $request->products_slots_id,
-            ]);
+        DB::transaction(function () use ($request, $banner) {
 
-            if ($request->has('delete_images')) {
-                $imagesToDelete =  $singleBanner->banner_images()->whereIn('id', $request->delete_images)->get();
-                foreach ($imagesToDelete as $image) {
-                    Storage::disk('public')->delete($image->path);
-                    $image->delete();
+            /* ---------- UPDATE OLD IMAGE LINKS ---------- */
+
+            if ($request->has('image_links')) {
+                foreach ($request->image_links as $img) {
+                    BannerImage::where('id', $img['id'])
+                        ->where('banner_id', $banner->id)
+                        ->update([
+                            'link' => $img['link']
+                        ]);
                 }
             }
 
-            if ($request->has('images')) {
-                foreach ($request->images as $img) {
-                    $path_name = $img->store('banner/images', 'public');
-                    $singleBanner->banner_images()->create([
-                        'path' => $path_name
+            /* ---------- ADD NEW IMAGES ---------- */
+
+            $uploadedBanners = $request->file('banners');
+
+            if (!empty($uploadedBanners)) {
+                foreach ($uploadedBanners as $index => $bannerFile) {
+
+                    if (!isset($bannerFile['image'])) continue;
+
+                    $imageFile = $bannerFile['image'];
+                    $link = $request->input("banners.$index.link");
+
+                    $path = $imageFile->store('banner/images', 'public');
+
+                    $banner->banner_images()->create([
+                        'path' => $path,
+                        'link' => $link
                     ]);
                 }
             }
-            Cache::forget('frontend_banners');
-            $this->clearHomeCategoryCach();
-            return $singleBanner->load('banner_images');
-        });
-
-        return response()->json($banner);
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Banner $banner)
-    {
-        DB::transaction(function () use ($banner) {
-
-            foreach ($banner->banner_images as $image) {
-                Storage::disk('public')->delete($image->path);
-            }
-            $banner->banner_images()->delete();
-            $banner->delete();
         });
 
         Cache::forget('frontend_banners');
         $this->clearHomeCategoryCach();
-        return response()->json([
-            'message' => 'Successfully Deleted'
-        ]);
+
+        return response()->json($banner->load('banner_images'));
+    }
+
+    /* =========================================================
+        DELETE SINGLE IMAGE
+    ========================================================= */
+
+    public function destroy($id)
+    {
+        $image = BannerImage::findOrFail($id);
+
+        if ($image->banner->banner_images()->count() <= 1) {
+            return response()->json([
+                'message' => 'At least one banner image is required'
+            ], 422);
+        }
+
+        if (Storage::disk('public')->exists($image->path)) {
+            Storage::disk('public')->delete($image->path);
+        }
+
+        $image->delete();
+
+        Cache::forget('frontend_banners');
+        $this->clearHomeCategoryCach();
+
+        return response()->json(['message' => 'Deleted']);
     }
 }

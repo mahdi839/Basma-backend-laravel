@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class BannerImage extends Model
 {
-    protected $fillable = ['path'];
+    protected $fillable = ['path','link'];
 
     public function banner(){
         return $this->belongsTo(Banner::class);
