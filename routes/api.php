@@ -53,7 +53,7 @@ Route::get('/product-search', [ProductController::class, 'searchProducts']);
 
 // Frontend-specific endpoints
 Route::get('frontend/categories', [CategoryController::class, 'frontEndIndex']);
-Route::get('frontend/banner', [BannerController::class, 'frontEndIndex']);
+Route::get('frontend/banner', [BannerController::class, 'index']);
 Route::get('product-slots_index/frontEndIndex', [ProductsSlotController::class, 'frontEndIndex']);
 Route::get('productSizeGuideType/{id}', [CategoryController::class, 'productSizeGuideType']);
 

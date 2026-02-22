@@ -58,14 +58,6 @@ class ProductsSlotController extends Controller
                             ->orderBy('id')
                             ->limit(1); // Only first image
                     },
-                    // Banner with images
-                    'banner' => function ($q) {
-                        $q->select('id', 'category_id', 'link', 'type');
-                    },
-                    'banner.banner_images' => function ($q) {
-                        $q->select('id', 'banner_id', 'path')
-                            ->limit(1);
-                    }
                 ])
                 ->select('id', 'name', 'slug', 'priority')
                 ->orderBy('priority')
