@@ -56,7 +56,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'title'             => 'required',
-            'short_description' => 'required',
+            'short_description' => 'nullable',
             'video_url'         => 'nullable',
             'description'       => 'nullable',
             'discount'          => 'nullable',
@@ -216,7 +216,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'title'             => 'required',
-            'short_description' => 'required',
+            'short_description' => 'nullable',
             'video_url'         => 'nullable',
             'description'       => 'nullable',
             'discount'          => 'nullable',
