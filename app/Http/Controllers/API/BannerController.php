@@ -15,27 +15,31 @@ class BannerController extends Controller
 {
     use ClearsHomeCache;
 
+    private const CACHE_KEY = 'frontend_banners';
+    private const CACHE_TTL = 36000; // 10 hours in seconds
+
     /* =========================================================
         GET HERO BANNER
     ========================================================= */
 
     public function index()
     {
-        $banner = Banner::with('banner_images')
-            ->where('type', 'hero')
-            ->select('id','type','link')
-            ->first();
+        $banner = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+            return Banner::with('banner_images:id,banner_id,path,link')
+                ->where('type', 'hero')
+                ->select('id', 'type')
+                ->first();
+        });
 
         if (!$banner) {
             return response()->json([
                 'data' => [],
                 'message' => 'No banner created yet'
-            ]);
+            ], 404);
         }
 
         return response()->json([
             'data' => [$banner],
-            'banner_images' => $banner->banner_images
         ]);
     }
 
@@ -46,36 +50,28 @@ class BannerController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'banners' => 'required|array',
+            'banners'         => 'required|array',
             'banners.*.image' => 'required|image|max:2048',
-            'banners.*.link' => 'nullable|string'
+            'banners.*.link'  => 'nullable|string'
         ]);
 
         $banner = DB::transaction(function () use ($request) {
 
-            $banner = Banner::firstOrCreate([
-                'type' => 'hero'
-            ]);
+            $banner = Banner::firstOrCreate(['type' => 'hero']);
 
-            $uploadedBanners = $request->file('banners');
-
-            foreach ($uploadedBanners as $index => $bannerFile) {
-
-                $imageFile = $bannerFile['image'];
-                $link = $request->input("banners.$index.link");
-
-                $path = $imageFile->store('banner/images', 'public');
+            foreach ($request->file('banners') as $index => $bannerFile) {
+                $path = $bannerFile['image']->store('banner/images', 'public');
 
                 $banner->banner_images()->create([
                     'path' => $path,
-                    'link' => $link
+                    'link' => $request->input("banners.$index.link"),
                 ]);
             }
 
             return $banner->load('banner_images');
         });
 
-        Cache::forget('frontend_banners');
+        Cache::forget(self::CACHE_KEY);
         $this->clearHomeCategoryCach();
 
         return response()->json($banner, 201);
@@ -88,53 +84,43 @@ class BannerController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'banners' => 'nullable|array',
-            'banners.*.image' => 'nullable|image|max:2048',
-            'banners.*.link' => 'nullable|string',
-            'image_links' => 'nullable|array',
-            'image_links.*.id' => 'required|exists:banner_images,id',
-            'image_links.*.link' => 'nullable|string'
+            'banners'              => 'nullable|array',
+            'banners.*.image'      => 'nullable|image|max:2048',
+            'banners.*.link'       => 'nullable|string',
+            'image_links'          => 'nullable|array',
+            'image_links.*.id'     => 'required|exists:banner_images,id',
+            'image_links.*.link'   => 'nullable|string'
         ]);
 
         $banner = Banner::findOrFail($id);
 
         DB::transaction(function () use ($request, $banner) {
 
-            /* ---------- UPDATE OLD IMAGE LINKS ---------- */
-
+            // Update existing image links
             if ($request->has('image_links')) {
                 foreach ($request->image_links as $img) {
                     BannerImage::where('id', $img['id'])
                         ->where('banner_id', $banner->id)
-                        ->update([
-                            'link' => $img['link']
-                        ]);
+                        ->update(['link' => $img['link']]);
                 }
             }
 
-            /* ---------- ADD NEW IMAGES ---------- */
-
-            $uploadedBanners = $request->file('banners');
-
-            if (!empty($uploadedBanners)) {
-                foreach ($uploadedBanners as $index => $bannerFile) {
-
+            // Add new images
+            if ($request->hasFile('banners')) {
+                foreach ($request->file('banners') as $index => $bannerFile) {
                     if (!isset($bannerFile['image'])) continue;
 
-                    $imageFile = $bannerFile['image'];
-                    $link = $request->input("banners.$index.link");
-
-                    $path = $imageFile->store('banner/images', 'public');
+                    $path = $bannerFile['image']->store('banner/images', 'public');
 
                     $banner->banner_images()->create([
                         'path' => $path,
-                        'link' => $link
+                        'link' => $request->input("banners.$index.link"),
                     ]);
                 }
             }
         });
 
-        Cache::forget('frontend_banners');
+        Cache::forget(self::CACHE_KEY);
         $this->clearHomeCategoryCach();
 
         return response()->json($banner->load('banner_images'));
@@ -160,7 +146,7 @@ class BannerController extends Controller
 
         $image->delete();
 
-        Cache::forget('frontend_banners');
+        Cache::forget(self::CACHE_KEY);
         $this->clearHomeCategoryCach();
 
         return response()->json(['message' => 'Deleted']);
