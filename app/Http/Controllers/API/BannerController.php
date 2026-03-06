@@ -23,6 +23,7 @@ class BannerController extends Controller
     {
         $banner = Banner::with('banner_images')
             ->where('type', 'hero')
+            ->select('id','type','link')
             ->first();
 
         if (!$banner) {
