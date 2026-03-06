@@ -695,7 +695,7 @@ class ProductController extends Controller
     public function shopProducts(Request $request)
     {
         $page = $request->query('page', 1);
-        $perPage = 9;
+        $perPage = 12;
         $categories = $request->query('categories', []);
         $sizes = $request->query('sizes', []);
         $minPrice = $request->query('min_price');
