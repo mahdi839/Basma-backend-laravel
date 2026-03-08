@@ -50,7 +50,7 @@ class ProductsSlotController extends Controller
                                 'products.status',
                             ])
                             ->orderBy('products.id', 'desc')
-                            ->limit(15); // Limit at database level
+                            ->limit(15); 
                     },
                     // Only load first image per product
                     'products.images' => function ($q) {
