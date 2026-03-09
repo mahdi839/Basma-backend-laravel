@@ -41,7 +41,8 @@ class CategoryController extends Controller
         // Get all root categories with ALL nested children recursively
         $categories = Cache::remember($cacheKey, 86400, function () {
             return Category::whereNull('parent_id')
-                ->with('allChildren') // This will recursively load all nested children
+                  ->select('id','name','slug','priority')
+                 ->with('allChildren:id,name,slug,parent_id')
                 ->orderBy('priority')
                 ->get();
         });
