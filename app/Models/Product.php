@@ -57,4 +57,9 @@ class Product extends Model
     {
         return $this->hasMany(ProductSpecification::class)->orderBy('order');
     }
+
+    public function firstImage()
+    {
+        return $this->hasOne(ProductImage::class)->orderBy('position');
+    }
 }

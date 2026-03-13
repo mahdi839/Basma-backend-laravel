@@ -199,9 +199,13 @@ class ProductController extends Controller
         $cacheKey = "product:{$id}";
 
         $product = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($id) {
-            return Product::with(['images:id,product_id,image', 'sizes:id,size',
-             'faqs:id,product_id,question,answer', 'category:id,name',
-              'specifications:id,product_id,key,value,order'])
+            return Product::with([
+                'images:id,product_id,image',
+                'sizes:id,size',
+                'faqs:id,product_id,question,answer',
+                'category:id,name',
+                'specifications:id,product_id,key,value,order'
+            ])
                 ->select(
                     'id',
                     'title',
@@ -543,13 +547,15 @@ class ProductController extends Controller
     public function category_products(Request $request, $id)
     {
         $page = $request->query('page', 1);
-        $perPage = 20; // Products per page
+        $perPage = 20;
 
-        // Cache key includes page number
         $cacheKey = "related_products:{$id}:page:{$page}";
 
         $result = Cache::remember($cacheKey, now()->addHours(2), function () use ($id, $page, $perPage) {
-            $product = Product::select('id')->with('category:id')->findOrFail($id);
+
+            $product = Product::select('id')
+                ->with('category:id')
+                ->findOrFail($id);
 
             $categoryIds = $product->category->pluck('id');
 
@@ -557,46 +563,33 @@ class ProductController extends Controller
                 'id',
                 'title',
                 'colors',
-                'short_description',
                 'price',
                 'discount',
                 'status',
-                'created_at'
             ])
-                ->withCount(['sizes'])
                 ->whereHas('category', function ($q) use ($categoryIds) {
                     $q->whereIn('categories.id', $categoryIds);
                 })
                 ->with([
-                    'images' => function ($q) {
-                        $q->select('id', 'product_id', 'image')
-                            ->orderBy('id')
-                            ->limit(1);
-                    }
+                    'firstImage:id,product_id,image'
                 ])
                 ->where('id', '!=', $product->id)
                 ->whereIn('status', ['in-stock', 'prebook'])
                 ->orderBy('created_at', 'desc');
 
-            // Paginate
             $paginated = $query->paginate($perPage, ['*'], 'page', $page);
 
-            // Transform data
-            $products = $products = $paginated->getCollection()->map(function ($item) {
+            $products = $paginated->getCollection()->map(function ($item) {
                 return [
                     'id' => $item->id,
                     'title' => $item->title,
-                    'short_description' => $item->short_description,
                     'price' => $item->price,
                     'discount' => $item->discount,
                     'status' => $item->status,
-                    'sizes_count' => $item->sizes_count,
                     'colors' => $item->colors,
-                    'image' => $item->images->first()?->image,
-                    'created_at' => $item->created_at,
+                    'image' => $item->firstImage?->image, // ✅ correct
                 ];
             });
-
 
             return [
                 'data' => $products,
@@ -612,6 +605,7 @@ class ProductController extends Controller
 
         return response()->json($result);
     }
+
 
     public function categorySlugProducts(Request $request, $slug)
     {
