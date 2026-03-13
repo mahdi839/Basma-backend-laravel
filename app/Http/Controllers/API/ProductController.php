@@ -10,7 +10,6 @@ use App\Models\Size;
 use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
@@ -552,9 +551,7 @@ class ProductController extends Controller
         $result = Cache::remember($cacheKey, now()->addHours(2), function () use ($id, $page, $perPage) {
             $product = Product::select('id')->with('category:id')->findOrFail($id);
 
-            $categoryIds = DB::table('category_product')
-                ->where('product_id', $id)
-                ->pluck('category_id');
+            $categoryIds = $product->category->pluck('id');
 
             $query = Product::select([
                 'id',
