@@ -10,6 +10,7 @@ use App\Models\Size;
 use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
@@ -199,7 +200,19 @@ class ProductController extends Controller
         $cacheKey = "product:{$id}";
 
         $product = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($id) {
-            return Product::with(['images', 'sizes', 'faqs', 'category', 'specifications'])
+            return Product::with(['images:id,product_id,image', 'sizes:id,size',
+             'faqs:id,product_id,question,answer', 'category:id,name',
+              'specifications:id,product_id,key,value,order'])
+                ->select(
+                    'id',
+                    'title',
+                    'sku',
+                    'price',
+                    'video_url',
+                    'discount',
+                    'status',
+                    'colors'
+                )
                 ->findOrFail($id);
         });
 
@@ -539,7 +552,9 @@ class ProductController extends Controller
         $result = Cache::remember($cacheKey, now()->addHours(2), function () use ($id, $page, $perPage) {
             $product = Product::select('id')->with('category:id')->findOrFail($id);
 
-            $categoryIds = $product->category->pluck('id');
+            $categoryIds = DB::table('category_product')
+                ->where('product_id', $id)
+                ->pluck('category_id');
 
             $query = Product::select([
                 'id',
