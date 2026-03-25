@@ -276,14 +276,14 @@ class OrderController extends Controller
                         throw new \Exception('Product size not found.');
                     }
 
-                    if ($productSize->stock < $item['qty']) {
-                        throw new \Exception(
-                            "Insufficient stock for {$item['title']} ({$item['size']})"
-                        );
-                    }
+                    // if ($productSize->stock < $item['qty']) {
+                    //     throw new \Exception(
+                    //         "Insufficient stock for {$item['title']} ({$item['size']})"
+                    //     );
+                    // }
 
                     // 🔻 Reduce stock
-                    $productSize->decrement('stock', $item['qty']);
+                    // $productSize->decrement('stock', $item['qty']);
                 }
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -616,19 +616,19 @@ class OrderController extends Controller
                     ]);
 
                     // Deduct new stock ONLY if NEW item has a size
-                    if ($newSizeId) {
-                        $newProductSize = ProductSize::where('product_id', $item['product_id'])
-                            ->where('size_id', $newSizeId)
-                            ->lockForUpdate()
-                            ->first();
+                    // if ($newSizeId) {
+                    //     $newProductSize = ProductSize::where('product_id', $item['product_id'])
+                    //         ->where('size_id', $newSizeId)
+                    //         ->lockForUpdate()
+                    //         ->first();
 
-                        if ($newProductSize) {
-                            if ($newProductSize->stock < $newQty) {
-                                throw new \Exception("Insufficient stock for {$item['title']}. Available: {$newProductSize->stock}, Requested: {$newQty}");
-                            }
-                            $newProductSize->decrement('stock', $newQty);
-                        }
-                    }
+                    //     if ($newProductSize) {
+                    //         if ($newProductSize->stock < $newQty) {
+                    //             throw new \Exception("Insufficient stock for {$item['title']}. Available: {$newProductSize->stock}, Requested: {$newQty}");
+                    //         }
+                    //         $newProductSize->decrement('stock', $newQty);
+                    //     }
+                    // }
                 }
                 // No ID or doesn't exist -> CREATE NEW
                 else {
@@ -651,12 +651,12 @@ class OrderController extends Controller
                             ->lockForUpdate()
                             ->first();
 
-                        if ($productSize) {
-                            if ($productSize->stock < $item['qty']) {
-                                throw new \Exception("Insufficient stock for {$item['title']}. Available: {$productSize->stock}, Requested: {$item['qty']}");
-                            }
-                            $productSize->decrement('stock', $item['qty']);
-                        }
+                        // if ($productSize) {
+                        //     if ($productSize->stock < $item['qty']) {
+                        //         throw new \Exception("Insufficient stock for {$item['title']}. Available: {$productSize->stock}, Requested: {$item['qty']}");
+                        //     }
+                        //     $productSize->decrement('stock', $item['qty']);
+                        // }
                     }
                 }
             }
