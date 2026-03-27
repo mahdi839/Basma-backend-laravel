@@ -611,13 +611,10 @@ class ProductController extends Controller
     {
         $page = $request->query('page', 1);
         $perPage = 20;
-
         // Cache key includes slug and page number
         $cacheKey = "category_slug_products:{$slug}:page:{$page}";
-
         $result = Cache::remember($cacheKey, now()->addHours(2), function () use ($slug, $page, $perPage) {
-            // Find category by slug
-            $category = Category::where('slug', $slug)->firstOrFail();
+            // Base product query
             $query = Product::select([
                 'id',
                 'title',
@@ -629,9 +626,6 @@ class ProductController extends Controller
                 'created_at'
             ])
                 ->withCount(['sizes'])
-                ->whereHas('category', function ($q) use ($category) {
-                    $q->where('categories.id', $category->id);
-                })
                 ->with([
                     'images' => function ($q) {
                         $q->select('id', 'product_id', 'image')
@@ -642,9 +636,24 @@ class ProductController extends Controller
                 ->whereIn('status', ['in-stock', 'prebook'])
                 ->orderBy('created_at', 'desc');
 
+            if ($slug === 'new-arrivals') {
+                // Get IDs of latest 200 products first
+                $latestIds = Product::whereIn('status', ['in-stock', 'prebook'])
+                    ->orderBy('created_at', 'desc')
+                    ->limit(200)
+                    ->pluck('id');
+
+                $query->whereIn('id', $latestIds);
+            } else {
+                // Find category by slug and filter products
+                $category = Category::where('slug', $slug)->firstOrFail();
+                $query->whereHas('category', function ($q) use ($category) {
+                    $q->where('categories.id', $category->id);
+                });
+            }
+
             // Paginate
             $paginated = $query->paginate($perPage, ['*'], 'page', $page);
-
             // Transform data
             $products = $paginated->getCollection()->map(function ($item) {
                 return [
@@ -671,7 +680,6 @@ class ProductController extends Controller
                 ]
             ];
         });
-
         return response()->json($result);
     }
 
