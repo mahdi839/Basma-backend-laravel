@@ -134,12 +134,6 @@ class BannerController extends Controller
     {
         $image = BannerImage::findOrFail($id);
 
-        if ($image->banner->banner_images()->count() <= 1) {
-            return response()->json([
-                'message' => 'At least one banner image is required'
-            ], 422);
-        }
-
         if (Storage::disk('public')->exists($image->path)) {
             Storage::disk('public')->delete($image->path);
         }
