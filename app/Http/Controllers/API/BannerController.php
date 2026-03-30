@@ -52,19 +52,23 @@ class BannerController extends Controller
         $request->validate([
             'banners'         => 'required|array',
             'banners.*.image' => 'required|image|max:2048',
-            'banners.*.link'  => 'nullable|string'
+            'banners.*.link'  => 'nullable|string',
         ]);
 
         $banner = DB::transaction(function () use ($request) {
 
             $banner = Banner::firstOrCreate(['type' => 'hero']);
 
+            // $request->file('banners') returns an array like:
+            // [ 0 => ['image' => UploadedFile], 1 => ['image' => UploadedFile] ]
             foreach ($request->file('banners') as $index => $bannerFile) {
+                if (empty($bannerFile['image'])) continue;
+
                 $path = $bannerFile['image']->store('banner/images', 'public');
 
                 $banner->banner_images()->create([
                     'path' => $path,
-                    'link' => $request->input("banners.$index.link"),
+                    'link' => $request->input("banners.{$index}.link"),
                 ]);
             }
 
@@ -88,8 +92,8 @@ class BannerController extends Controller
             'banners.*.image'      => 'nullable|image|max:2048',
             'banners.*.link'       => 'nullable|string',
             'image_links'          => 'nullable|array',
-            'image_links.*.id'     => 'required|exists:banner_images,id',
-            'image_links.*.link'   => 'nullable|string'
+            'image_links.*.id'     => 'required_with:image_links|exists:banner_images,id',
+            'image_links.*.link'   => 'nullable|string',
         ]);
 
         $banner = Banner::findOrFail($id);
@@ -98,23 +102,25 @@ class BannerController extends Controller
 
             // Update existing image links
             if ($request->has('image_links')) {
-                foreach ($request->image_links as $img) {
+                foreach ($request->input('image_links') as $img) {
                     BannerImage::where('id', $img['id'])
                         ->where('banner_id', $banner->id)
-                        ->update(['link' => $img['link']]);
+                        ->update(['link' => $img['link'] ?? null]);
                 }
             }
 
             // Add new images
+            // $request->file('banners') returns array like:
+            // [ 0 => ['image' => UploadedFile], ... ]
             if ($request->hasFile('banners')) {
                 foreach ($request->file('banners') as $index => $bannerFile) {
-                    if (!isset($bannerFile['image'])) continue;
+                    if (empty($bannerFile['image'])) continue;
 
                     $path = $bannerFile['image']->store('banner/images', 'public');
 
                     $banner->banner_images()->create([
                         'path' => $path,
-                        'link' => $request->input("banners.$index.link"),
+                        'link' => $request->input("banners.{$index}.link"),
                     ]);
                 }
             }
