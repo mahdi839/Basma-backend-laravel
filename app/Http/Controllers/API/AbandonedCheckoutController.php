@@ -67,8 +67,11 @@ class AbandonedCheckoutController extends Controller
             ->when($request->filled('end_date'),function ($q)use ($request){
                 $q->whereDate('created_at','<=',$request->end_date);
             })
+              ->when($request->filled('status'), function ($q) use ($request) {
+                $q->where('status', $request->status);
+            })
             ->latest()
-            ->paginate(20);
+            ->paginate(50);
 
         return response()->json([
             'data' => $checkouts,
@@ -86,5 +89,23 @@ class AbandonedCheckoutController extends Controller
             ->update(['is_recovered' => true]);
 
         return response()->json(['message' => 'Checkout marked as converted.']);
+    }
+
+     public function updateStatus(Request $request, $id)
+    {
+        $data = $request->validate([
+            'status' => 'required',
+        ]);
+
+        $checkout = AbandonedCheckout::findOrFail($id);
+
+        $checkout->update([
+            'status' => $data['status'],
+        ]);
+
+        return response()->json([
+            'message' => 'Status updated successfully.',
+            'data' => $checkout,
+        ]);
     }
 }

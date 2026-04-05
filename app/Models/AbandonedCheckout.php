@@ -13,7 +13,8 @@ class AbandonedCheckout extends Model
         'address',
         'cart_items',
         'user_id',
-        'is_recovered'
+        'is_recovered',
+        'status',
     ];
     protected $casts = [
         'cart_items' => 'array', // Automatically handles JSON encoding/decoding
