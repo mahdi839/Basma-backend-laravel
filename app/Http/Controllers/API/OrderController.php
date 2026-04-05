@@ -66,7 +66,7 @@ class OrderController extends Controller
                 });
             })
             ->latest()
-            ->paginate(10);
+            ->paginate(50);
         $orders->getCollection()->transform(function ($order) {
             $orderCount = Order::where('phone', $order->phone)->count();
             $order->customer_type = $orderCount > 1 ? 'Repeat Customer' : 'New';
