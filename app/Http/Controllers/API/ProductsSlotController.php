@@ -20,7 +20,7 @@ class ProductsSlotController extends Controller
         // Create cache key
         $cacheKey = "page_{$page}";
 
-        // Cache with tags - now you can flush all pages at once
+        // Cache with tags 
         $result = Cache::tags(['home_categories'])->remember($cacheKey, 3600, function () use ($page, $perPage) {
             // Calculate offset
             $offset = ($page - 1) * $perPage;
@@ -50,7 +50,7 @@ class ProductsSlotController extends Controller
                                 'products.status',
                             ])
                             ->orderBy('products.id', 'desc')
-                            ->limit(15); 
+                            ->limit(12); 
                     },
                     // Only load first image per product
                     'products.images' => function ($q) {
