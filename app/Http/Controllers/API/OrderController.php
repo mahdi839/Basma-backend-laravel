@@ -229,6 +229,7 @@ class OrderController extends Controller
             'cart.*.qty' => 'required|integer',
             'cart.*.totalPrice' => 'required|numeric',
             'cart.*.colorImage' => 'sometimes|nullable',
+            'cart.*.color_name' => 'sometimes|nullable',
             'total_amount' => 'required|numeric',
             'advance_payment' => 'nullable|numeric|min:0',
             // Facebook tracking data
@@ -294,6 +295,7 @@ class OrderController extends Controller
                     'qty' => $item['qty'],
                     'totalPrice' => $item['totalPrice'],
                     'colorImage' => $item['colorImage'] ?? '',
+                    'color_name' => $item['color_name'] ?? '',
                 ]);
 
                 // Prepare Facebook data
@@ -524,6 +526,7 @@ class OrderController extends Controller
             'items.*.color.id' => 'nullable',
             'items.*.color.code' => 'nullable|string',
             'items.*.color.image' => 'nullable|string',
+            'items.*.color.color_name' => 'nullable|string',
             'items.*.unitPrice' => 'required|numeric',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.totalPrice' => 'required|numeric',
@@ -582,6 +585,7 @@ class OrderController extends Controller
                 $colorImage = null;
                 if (isset($item['color']) && isset($item['color']['image'])) {
                     $colorImage = $item['color']['image'];
+                    $colorName = $item['color']['color_name'];
                 }
 
                 // If item has ID and exists -> UPDATE
@@ -613,6 +617,7 @@ class OrderController extends Controller
                         'qty' => $newQty,
                         'totalPrice' => $item['totalPrice'],
                         'colorImage' => $colorImage ? url($colorImage) : '',
+                        'color_name' => $colorName??""
                     ]);
 
                     // Deduct new stock ONLY if NEW item has a size
@@ -642,6 +647,7 @@ class OrderController extends Controller
                         'qty' => $item['qty'],
                         'totalPrice' => $item['totalPrice'],
                         'colorImage' => $colorImage ? url($colorImage) : '',
+                        'color_name' => $colorName??""
                     ]);
 
                     // ONLY manage stock if size is selected
