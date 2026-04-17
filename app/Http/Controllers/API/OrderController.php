@@ -9,16 +9,20 @@ use App\Models\Product;
 use App\Models\ProductSize;
 use App\Models\Size;
 use App\Services\FacebookConversionService;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
     protected $facebookService;
+    protected $smsService;
 
-    public function __construct(FacebookConversionService $facebookService)
+    public function __construct(FacebookConversionService $facebookService,SmsService $smsService)
     {
         $this->facebookService = $facebookService;
+        $this->smsService = $smsService;
     }
 
     /**
@@ -242,7 +246,7 @@ class OrderController extends Controller
 
             // Create order
             $order = Order::create([
-                'order_number' => 'ORD-'.date('Ymd').'-'.strtoupper(uniqid()),
+                'order_number' => 'ORD-'.rand(10000, 99999),
                 'name' => $request->name,
                 'phone' => $request->phone,
                 'user_id' => $request->user_id ?? null,
@@ -305,6 +309,16 @@ class OrderController extends Controller
 
             DB::commit();
 
+            $smsResult = null;
+
+            if (!empty($order->phone)) {
+                $smsResult = $this->smsService->sendOrderConfirmation(
+                    $order->phone,
+                    $order->name,
+                    $order->order_number
+                );
+            }
+
             // Track Facebook Purchase Event
             $this->facebookService->sendEvent(
                 'Purchase',
@@ -329,6 +343,7 @@ class OrderController extends Controller
             return response()->json([
                 'message' => 'Order created successfully',
                 'order_number' => $order->order_number,
+                'sms' => $smsResult,
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
