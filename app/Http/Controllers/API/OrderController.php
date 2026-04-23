@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductSize;
 use App\Models\Size;
+use App\Models\User;
 use App\Services\FacebookConversionService;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
@@ -355,17 +356,33 @@ class OrderController extends Controller
         }
     }
 
-    public function order_status(Request $request, $id)
-    {
-        $order = Order::findOrFail($id);
-        $order->update([
-            'status' => $request->status,
-        ]);
+  public function order_status(Request $request, $id)
+ {
+    $order = Order::findOrFail($id);
 
-        return response()->json([
-            'message' => 'Status Updated Successfully!',
-        ]);
+    $order->update([
+        'status' => $request->status,
+    ]);
+
+    if ($request->status === 'order_confirmed' || $request->status === 'cancelled') {
+        if (!empty($order->phone)) {
+            $statusText = $request->status === 'order_confirmed' ? 'confirmed' : 'cancelled';
+
+            $customMessage = "Dear {$order->name}, your order {$order->order_number} has been {$statusText} successfully. Thank you for shopping with us.";
+
+            $this->smsService->sendOrderConfirmation(
+                $order->phone,
+                $order->name,
+                $order->order_number,
+                $customMessage
+            );
+        }
     }
+
+    return response()->json([
+        'message' => 'Status Updated Successfully!',
+    ]);
+ }
 
     /**
      * Display the specified resource.

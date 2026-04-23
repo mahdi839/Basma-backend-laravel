@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 
 class SmsService
 {
-    public function sendOrderConfirmation(string $phone, string $customerName, string $orderNumber): array
+    public function sendOrderConfirmation(string $phone, string $customerName, string $orderNumber,?string $custom_message = null): array
     {
         $phone = $this->formatBdPhone($phone);
 
@@ -18,8 +18,12 @@ class SmsService
             ];
         }
 
-        $message = "Dear {$customerName}, your order {$orderNumber} has been placed successfully. Thank you for shopping with us.";
-
+        $DefaultMessage = "Dear {$customerName}, your order {$orderNumber} has been placed successfully. Thank you for shopping with us.";
+        if($custom_message){
+            $message = $custom_message;
+        }else{
+            $message = $DefaultMessage;
+        }
         return $this->sendSms($phone, $message);
     }
 
