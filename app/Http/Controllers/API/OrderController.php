@@ -554,7 +554,7 @@ class OrderController extends Controller
             'items.*.color.id' => 'nullable',
             'items.*.color.code' => 'nullable|string',
             'items.*.color.image' => 'nullable|string',
-            'items.*.color.color_name' => 'nullable|string',
+            'items.*.color.name' => 'nullable|string',
             'items.*.unitPrice' => 'required|numeric',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.totalPrice' => 'required|numeric',
@@ -613,7 +613,7 @@ class OrderController extends Controller
                 $colorImage = null;
                 if (isset($item['color']) && isset($item['color']['image'])) {
                     $colorImage = $item['color']['image'];
-                    $colorName = $item['color']['color_name'];
+                    $colorName = $item['color']['name'];
                 }
 
                 // If item has ID and exists -> UPDATE
