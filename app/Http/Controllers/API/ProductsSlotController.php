@@ -20,8 +20,7 @@ class ProductsSlotController extends Controller
         // Create cache key
         $cacheKey = "page_{$page}";
 
-        // Cache with tags 
-        $result = Cache::tags(['home_categories'])->remember($cacheKey, 3600, function () use ($page, $perPage) {
+        $result = Cache::remember("home_categories_{$cacheKey}", 3600, function () use ($page, $perPage) {
             // Calculate offset
             $offset = ($page - 1) * $perPage;
 

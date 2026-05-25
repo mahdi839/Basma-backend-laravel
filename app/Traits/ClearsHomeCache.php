@@ -10,6 +10,8 @@ trait ClearsHomeCache {
      */
 
     protected function clearHomeCategoryCach (){
-        Cache::tags(['home_categories'])->flush();
+        for ($page = 1; $page <= 25; $page++) {
+            Cache::forget("home_categories_page_{$page}");
+        }
     }
 }

@@ -12,12 +12,12 @@ use Carbon\Carbon;
 class PathaoService
 {
     private string $baseUrl;
-    private string $clientId;
-    private string $clientSecret;
-    private string $username;
-    private string $password;
+    private ?string $clientId;
+    private ?string $clientSecret;
+    private ?string $username;
+    private ?string $password;
     private string $grantType;
-    private int $storeId;
+    private ?int $storeId;
 
     public function __construct()
     {
@@ -27,7 +27,7 @@ class PathaoService
         $this->username = config('pathao.username');
         $this->password = config('pathao.password');
         $this->grantType = config('pathao.grant_type');
-        $this->storeId = config('pathao.store_id');
+        $this->storeId = config('pathao.store_id') ? (int) config('pathao.store_id') : null;
     }
 
     public function getAccessToken()
@@ -50,6 +50,8 @@ class PathaoService
     public function issueNewToken()
     {
         try {
+            $this->ensureConfigured();
+
             $response = Http::post($this->baseUrl . '/aladdin/api/v1/issue-token', [
                 'client_id' => $this->clientId,
                 'client_secret' => $this->clientSecret,
@@ -81,6 +83,8 @@ class PathaoService
     public function refreshToken(string $refreshToken): string
     {
         try {
+            $this->ensureConfigured();
+
             $response = Http::post($this->baseUrl . '/aladdin/api/v1/issue-token', [
                 'client_id' => $this->clientId,
                 'client_secret' => $this->clientSecret,
@@ -111,6 +115,8 @@ class PathaoService
     public function createOrder(Order $order): array
     {
         try {
+            $this->ensureConfigured();
+
             $accessToken = $this->getAccessToken();
 
             // Build item description from order items
@@ -165,6 +171,13 @@ class PathaoService
         } catch (Exception $e) {
             Log::error('Pathao order creation error: ' . $e->getMessage());
             throw $e;
+        }
+    }
+
+    private function ensureConfigured(): void
+    {
+        if (!$this->clientId || !$this->clientSecret || !$this->username || !$this->password || !$this->storeId) {
+            throw new Exception('Pathao credentials are not configured.');
         }
     }
 }
