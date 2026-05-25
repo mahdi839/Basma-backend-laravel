@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Cache;
 // Auth
 Route::post('signUp', [AuthController::class, 'signUp']);
 Route::post('logIn', [AuthController::class, 'logIn']);
+Route::post('admin/logIn', [AuthController::class, 'adminLogIn']);
 
 // shop page routes
 Route::get('/shop/products', [ProductController::class, 'shopProducts']);
@@ -315,5 +316,4 @@ Route::prefix('customers')->group(function () {
 // Dashboard summary (Permission Protected)
 Route::middleware(['auth:sanctum', 'permission:view dashboard summary'])
     ->get('/dashboard/summary', [DashboardSummaryController::class, 'summary']);
-
 
