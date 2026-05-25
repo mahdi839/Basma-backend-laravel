@@ -22,10 +22,10 @@ class RoleSeeder extends Seeder
 
         // 2. Create Mehedi Hasan user
         $mehedi = User::firstOrCreate(
-            ['email' => 'mehedi@example.com'], // Unique identifier
+            ['email' => 'eyarafashion_xyz@gmail.com'], // Unique identifier
             [
                 'name' => 'Mehedi Hasan',
-                'password' => Hash::make('password123'), // Change password later
+                'password' => Hash::make('eyara_xyz24434'), // Change password later
             ]
         );
 
