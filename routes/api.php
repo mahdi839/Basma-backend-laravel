@@ -209,6 +209,8 @@ Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 's
 // Route::get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
 Route::post('/mark-checkout-converted', [AbandonedCheckoutController::class, 'markAsConverted']);
 Route::put('/dashboard/abandoned-checkouts/{id}/status', [AbandonedCheckoutController::class, 'updateStatus']);
+Route::middleware(['permission:incomplete_order'])
+    ->post('/dashboard/abandoned-checkouts/{id}/convert', [AbandonedCheckoutController::class, 'convertToOrder']);
 
 
 // --------------------------
@@ -316,4 +318,3 @@ Route::prefix('customers')->group(function () {
 // Dashboard summary (Permission Protected)
 Route::middleware(['auth:sanctum', 'permission:view dashboard summary'])
     ->get('/dashboard/summary', [DashboardSummaryController::class, 'summary']);
-

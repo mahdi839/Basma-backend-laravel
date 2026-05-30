@@ -15,9 +15,12 @@ class AbandonedCheckout extends Model
         'user_id',
         'is_recovered',
         'status',
+        'converted_order_id',
+        'converted_at',
     ];
     protected $casts = [
         'cart_items' => 'array', // Automatically handles JSON encoding/decoding
-        'is_converted' => 'boolean',
+        'is_recovered' => 'boolean',
+        'converted_at' => 'datetime',
     ];
 }
