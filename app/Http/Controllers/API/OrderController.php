@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\AbandonedCheckout;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -237,6 +238,7 @@ class OrderController extends Controller
             'fbp' => 'nullable|string',
             'fbc' => 'nullable|string',
             'event_source_url' => 'nullable|string',
+            'checkout_session_id' => 'nullable|string',
         ]);
 
         DB::beginTransaction();
@@ -306,6 +308,29 @@ class OrderController extends Controller
                     'quantity' => $item['qty'],
                     'item_price' => $item['unitPrice'],
                 ];
+            }
+
+            $checkoutSessionId = $request->header('X-Session-ID') ?: $request->checkout_session_id;
+
+            if ($checkoutSessionId || $request->phone) {
+                AbandonedCheckout::whereNull('converted_order_id')
+                    ->where(function ($query) use ($checkoutSessionId, $request) {
+                        if ($checkoutSessionId) {
+                            $query->where('session_id', $checkoutSessionId);
+
+                            return;
+                        }
+
+                        if ($request->phone) {
+                            $query->where('phone', $request->phone);
+                        }
+                    })
+                    ->update([
+                        'is_recovered' => true,
+                        'status' => 'placed',
+                        'converted_order_id' => $order->id,
+                        'converted_at' => now(),
+                    ]);
             }
 
             DB::commit();

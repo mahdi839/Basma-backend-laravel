@@ -29,6 +29,23 @@ class AbandonedCheckoutController extends Controller
             return response()->json(['message' => 'No phone number provided.'], 400);
         }
 
+        $convertedCheckoutExists = AbandonedCheckout::where('is_recovered', true)
+            ->whereNotNull('converted_order_id')
+            ->where(function ($query) use ($phone, $sessionId) {
+                if ($sessionId) {
+                    $query->where('session_id', $sessionId);
+
+                    return;
+                }
+
+                $query->where('phone', $phone);
+            })
+            ->exists();
+
+        if ($convertedCheckoutExists) {
+            return response()->json(['message' => 'Checkout already converted.']);
+        }
+
         // Check if abandoned checkout already exists for this phone
         $existingCheckout = AbandonedCheckout::where('is_recovered', false)
             ->where(function ($query) use ($phone, $sessionId) {
@@ -65,10 +82,8 @@ class AbandonedCheckoutController extends Controller
 
     public function index(Request $request)
     {
-        $checkouts = AbandonedCheckout::where(function ($query) {
-                $query->where('is_recovered', false)
-                    ->orWhereNotNull('converted_order_id');
-            })
+        $checkouts = AbandonedCheckout::where('is_recovered', false)
+            ->whereNull('converted_order_id')
             ->when($request->filled('start_date'),function ($q)use ($request){
                 $q->whereDate('created_at','>=',$request->start_date);
             })
@@ -100,9 +115,9 @@ class AbandonedCheckoutController extends Controller
 
         AbandonedCheckout::where(function ($query) use ($request) {
                 $query->when($request->filled('session_id'), function ($q) use ($request) {
-                    $q->orWhere('session_id', $request->session_id);
-                })->when($request->filled('phone'), function ($q) use ($request) {
-                    $q->orWhere('phone', $request->phone);
+                    $q->where('session_id', $request->session_id);
+                })->when(! $request->filled('session_id') && $request->filled('phone'), function ($q) use ($request) {
+                    $q->where('phone', $request->phone);
                 });
             })
             ->update(['is_recovered' => true]);
