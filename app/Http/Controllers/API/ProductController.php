@@ -46,6 +46,13 @@ class ProductController extends Controller
         return response()->json([
             'message' => 'success',
             'data'    => $allProducts,
+            'pagination' => [
+                'current_page' => $allProducts->currentPage(),
+                'last_page' => $allProducts->lastPage(),
+                'per_page' => $allProducts->perPage(),
+                'total' => $allProducts->total(),
+                'has_more' => $allProducts->hasMorePages(),
+            ],
         ], 200);
     }
 
