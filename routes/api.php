@@ -16,6 +16,7 @@ use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
 use App\Http\Controllers\API\CustomerLeaderboardController;
 use App\Http\Controllers\API\DashboardSummaryController;
+use App\Http\Controllers\API\SalesReportController;
 use App\Http\Controllers\API\PathaoController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\ProductStockController;
@@ -182,6 +183,11 @@ Route::middleware(['permission:delete sizes'])
 // --------------------------
 Route::middleware(['permission:view orders'])
     ->get('orders', [OrderController::class, 'index']);
+
+Route::middleware(['auth:sanctum', 'permission:view orders'])->group(function () {
+    Route::get('order-product-options', [SalesReportController::class, 'productOptions']);
+    Route::get('sales-report', [SalesReportController::class, 'index']);
+});
 
 Route::middleware(['permission:edit orders'])
     ->get('/orders/{id}/edit', [OrderController::class, 'edit']);

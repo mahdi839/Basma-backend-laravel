@@ -40,6 +40,7 @@ class OrderController extends Controller
         $start_date = $request->query('start_date', '');
         $end_date = $request->query('end_date', '');
         $product_title = $request->query('product_title', '');
+        $product_id = $request->query('product_id', '');
 
         $orders = Order::with('orderItems.size')
             ->when($status, function ($q) use ($status) {
@@ -63,6 +64,11 @@ class OrderController extends Controller
             ->when($product_title, function ($q) use ($product_title) {
                 $q->whereHas('orderItems', function ($query) use ($product_title) {
                     $query->where('title', $product_title);
+                });
+            })
+            ->when($product_id, function ($q) use ($product_id) {
+                $q->whereHas('orderItems', function ($query) use ($product_id) {
+                    $query->where('product_id', $product_id);
                 });
             })
             ->when($search, function ($q) use ($search) {
@@ -93,6 +99,7 @@ class OrderController extends Controller
         $start_date = $request->query('start_date', '');
         $end_date = $request->query('end_date', '');
         $product_title = $request->query('product_title', '');
+        $product_id = $request->query('product_id', '');
         $query = Order::with('orderItems.size')
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
@@ -115,6 +122,11 @@ class OrderController extends Controller
             ->when($product_title, function ($q) use ($product_title) {
                 $q->whereHas('orderItems', function ($query) use ($product_title) {
                     $query->where('title', $product_title);
+                });
+            })
+            ->when($product_id, function ($q) use ($product_id) {
+                $q->whereHas('orderItems', function ($query) use ($product_id) {
+                    $query->where('product_id', $product_id);
                 });
             })
             ->when($search, function ($q) use ($search) {
