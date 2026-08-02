@@ -20,13 +20,15 @@ class DashboardSummaryController extends Controller
             'hot_limit' => ['nullable', 'integer', 'min:1', 'max:20'],
         ]);
 
-        $timezone = config('app.timezone', 'UTC');
-        [$from, $to] = $this->resolveDateRange(
+        $timezone = config('app.business_timezone', 'Asia/Dhaka');
+        [$localFrom, $localTo] = $this->resolveDateRange(
             $validated['range'] ?? 'today',
             $validated['start_date'] ?? null,
             $validated['end_date'] ?? null,
             $timezone
         );
+        $from = $localFrom->copy()->utc();
+        $to = $localTo->copy()->utc();
         $statuses = collect(explode(',', $validated['status'] ?? ''))
             ->map(fn ($status) => trim($status))
             ->filter()
@@ -55,7 +57,7 @@ class DashboardSummaryController extends Controller
         $customerCount = $orders->pluck('phone')->filter()->unique()->count();
 
         $trend = $orders
-            ->groupBy(fn ($order) => $order->created_at->format('Y-m-d'))
+            ->groupBy(fn ($order) => $order->created_at->copy()->setTimezone($timezone)->format('Y-m-d'))
             ->map(fn ($rows, $date) => [
                 'date' => $date,
                 'sales' => round((float) $rows->sum('total'), 2),
@@ -104,8 +106,9 @@ class DashboardSummaryController extends Controller
 
         return response()->json([
             'range' => [
-                'from' => $from->toDateTimeString(),
-                'to' => $to->toDateTimeString(),
+                'from' => $localFrom->toDateTimeString(),
+                'to' => $localTo->toDateTimeString(),
+                'timezone' => $timezone,
             ],
             'totals' => [
                 'gross_sales' => round($grossSales, 2),

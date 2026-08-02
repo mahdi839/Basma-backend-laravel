@@ -15,6 +15,7 @@ use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Carbon;
 
 class OrderController extends Controller
 {
@@ -41,6 +42,7 @@ class OrderController extends Controller
         $end_date = $request->query('end_date', '');
         $product_title = $request->query('product_title', '');
         $product_id = $request->query('product_id', '');
+        [$startAt, $endAt] = $this->orderDateBounds($start_date, $end_date);
 
         $orders = Order::with('orderItems.size')
             ->when($status, function ($q) use ($status) {
@@ -55,11 +57,11 @@ class OrderController extends Controller
             ->when($max, function ($q) use ($max) {
                 $q->where('total', '<=', $max);
             })
-            ->when($start_date, function ($q) use ($start_date) {
-                $q->whereDate('created_at', '>=', $start_date);
+            ->when($startAt, function ($q) use ($startAt) {
+                $q->where('created_at', '>=', $startAt);
             })
-            ->when($end_date, function ($q) use ($end_date) {
-                $q->whereDate('created_at', '<=', $end_date);
+            ->when($endAt, function ($q) use ($endAt) {
+                $q->where('created_at', '<=', $endAt);
             })
             ->when($product_title, function ($q) use ($product_title) {
                 $q->whereHas('orderItems', function ($query) use ($product_title) {
@@ -100,6 +102,7 @@ class OrderController extends Controller
         $end_date = $request->query('end_date', '');
         $product_title = $request->query('product_title', '');
         $product_id = $request->query('product_id', '');
+        [$startAt, $endAt] = $this->orderDateBounds($start_date, $end_date);
         $query = Order::with('orderItems.size')
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
@@ -113,11 +116,11 @@ class OrderController extends Controller
             ->when($max, function ($q) use ($max) {
                 $q->where('total', '<=', $max);
             })
-            ->when($start_date, function ($q) use ($start_date) {
-                $q->where('created_at', '>=', $start_date);
+            ->when($startAt, function ($q) use ($startAt) {
+                $q->where('created_at', '>=', $startAt);
             })
-            ->when($end_date, function ($q) use ($end_date) {
-                $q->where('created_at', '<=', $end_date);
+            ->when($endAt, function ($q) use ($endAt) {
+                $q->where('created_at', '<=', $endAt);
             })
             ->when($product_title, function ($q) use ($product_title) {
                 $q->whereHas('orderItems', function ($query) use ($product_title) {
@@ -754,5 +757,22 @@ class OrderController extends Controller
     public function destroy(Order $order)
     {
         //
+    }
+
+    /**
+     * Convert Bangladesh-local calendar dates to UTC database boundaries.
+     */
+    private function orderDateBounds(?string $startDate, ?string $endDate): array
+    {
+        $timezone = config('app.business_timezone', 'Asia/Dhaka');
+
+        return [
+            $startDate
+                ? Carbon::parse($startDate, $timezone)->startOfDay()->utc()
+                : null,
+            $endDate
+                ? Carbon::parse($endDate, $timezone)->endOfDay()->utc()
+                : null,
+        ];
     }
 }

@@ -23,13 +23,15 @@ class SalesReportController extends Controller
             'direction' => ['nullable', 'in:asc,desc'],
         ]);
 
-        $timezone = config('app.timezone', 'UTC');
-        $from = !empty($validated['start_date'])
+        $timezone = config('app.business_timezone', 'Asia/Dhaka');
+        $localFrom = !empty($validated['start_date'])
             ? Carbon::parse($validated['start_date'], $timezone)->startOfDay()
             : Carbon::now($timezone)->startOfMonth();
-        $to = !empty($validated['end_date'])
+        $localTo = !empty($validated['end_date'])
             ? Carbon::parse($validated['end_date'], $timezone)->endOfDay()
             : Carbon::now($timezone)->endOfDay();
+        $from = $localFrom->copy()->utc();
+        $to = $localTo->copy()->utc();
         $statuses = $this->statuses($validated['status'] ?? null);
 
         $orders = Order::query()
@@ -104,7 +106,7 @@ class SalesReportController extends Controller
             ->values();
 
         $dailySales = $orderRows
-            ->groupBy(fn ($order) => $order->created_at->format('Y-m-d'))
+            ->groupBy(fn ($order) => $order->created_at->copy()->setTimezone($timezone)->format('Y-m-d'))
             ->map(fn ($rows, $date) => [
                 'date' => $date,
                 'orders' => $rows->count(),
@@ -119,7 +121,11 @@ class SalesReportController extends Controller
         $ordersCount = $orderRows->count();
 
         return response()->json([
-            'range' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            'range' => [
+                'from' => $localFrom->toDateString(),
+                'to' => $localTo->toDateString(),
+                'timezone' => $timezone,
+            ],
             'summary' => [
                 'gross_sales' => round($grossSales, 2),
                 'orders' => $ordersCount,

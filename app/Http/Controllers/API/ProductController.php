@@ -203,11 +203,11 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $cacheKey = "product:{$id}";
+        $cacheKey = "product:detail:v2:{$id}";
 
         $product = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($id) {
             return Product::with([
-                'images:id,product_id,image',
+                'images:id,product_id,image,position',
                 'sizes:id,size',
                 'faqs:id,product_id,question,answer',
                 'category:id,name',
@@ -216,8 +216,10 @@ class ProductController extends Controller
                 ->select(
                     'id',
                     'title',
+                    'short_description',
                     'sku',
                     'price',
+                    'description',
                     'video_url',
                     'discount',
                     'status',
@@ -461,6 +463,7 @@ class ProductController extends Controller
     protected function clearRelatedCache($productId)
     {
         Cache::forget("product:{$productId}");
+        Cache::forget("product:detail:v2:{$productId}");
 
         // Clear all pages of related products cache
         $product = Product::with('category:id')->find($productId);

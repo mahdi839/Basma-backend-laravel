@@ -69,6 +69,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Business Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Database timestamps stay in UTC, while order dates in the dashboard are
+    | grouped and filtered by the shop's local calendar day.
+    |
+    */
+
+    'business_timezone' => env('BUSINESS_TIMEZONE', 'Asia/Dhaka'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |
