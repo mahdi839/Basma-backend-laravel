@@ -53,6 +53,8 @@ class PermissionSeeder extends Seeder
             'view leaderboard',
             'view statistics',
             'view customer details',
+            'view customers',
+            'edit customers',
 
             // User management
             'view users',
@@ -109,6 +111,12 @@ class PermissionSeeder extends Seeder
             'edit banners',
             'delete banners',
             'view dashboard',
+            'view dashboard summary',
+            'view leaderboard',
+            'view statistics',
+            'view customer details',
+            'view customers',
+            'edit customers',
         ]);
 
         // ✅ User role has no admin permissions

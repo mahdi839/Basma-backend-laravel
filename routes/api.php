@@ -14,6 +14,7 @@ use App\Http\Controllers\API\ShippingCostController;
 use App\Http\Controllers\API\FooterSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
+use App\Http\Controllers\API\CustomerController;
 use App\Http\Controllers\API\CustomerLeaderboardController;
 use App\Http\Controllers\API\DashboardSummaryController;
 use App\Http\Controllers\API\SalesReportController;
@@ -319,6 +320,17 @@ Route::prefix('customers')->group(function () {
     Route::get('/{phone}', [CustomerLeaderboardController::class, 'show'])
         ->middleware(['auth:sanctum', 'permission:view customer details']);
 });
+
+// Customer profiles (list, edit, badge)
+Route::middleware(['auth:sanctum', 'permission:view leaderboard'])->group(function () {
+    Route::get('customer-profiles', [CustomerController::class, 'index']);
+    Route::get('customer-profiles/badge-options', [CustomerController::class, 'badgeOptions']);
+    Route::get('customer-profiles/{id}', [CustomerController::class, 'show']);
+    Route::put('customer-profiles/{id}', [CustomerController::class, 'update']);
+});
+
+Route::middleware(['auth:sanctum', 'permission:view orders'])
+    ->post('customer-profiles/assign-badge', [CustomerController::class, 'assignBadge']);
 
 
 // Dashboard summary (Permission Protected)

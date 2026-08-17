@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
+use App\Models\CustomerBadge;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -71,8 +73,10 @@ class CustomerLeaderboardController extends Controller
         $perPage = $request->input('per_page', 15);
         $customers = $query->paginate($perPage);
 
+        $badgeMap = $this->badgeMapForPhones($customers->getCollection()->pluck('phone'));
+
         // Enhance data with additional info
-        $customers->getCollection()->transform(function ($customer) {
+        $customers->getCollection()->transform(function ($customer) use ($badgeMap) {
             // Get user email if user_id exists
             $email = null;
             if ($customer->user_id) {
@@ -111,7 +115,8 @@ class CustomerLeaderboardController extends Controller
                 'total_spent' => (float) $customer->total_spent,
                 'last_order_date' => $customer->last_order_date,
                 'last_ordered_products' => $lastOrderedProducts,
-                'badge' => $badge
+                'badge' => $badge,
+                'assigned_badge' => $badgeMap[$customer->phone] ?? null,
             ];
         });
 
@@ -217,6 +222,7 @@ class CustomerLeaderboardController extends Controller
         }
 
         $badge = $customer->total_orders == 1 ? 'new' : 'repeat_customer';
+        $assignedBadge = $this->badgeMapForPhones(collect([$customer->phone]))[$customer->phone] ?? null;
 
         return response()->json([
             'success' => true,
@@ -231,8 +237,25 @@ class CustomerLeaderboardController extends Controller
                 'first_order_date' => $customer->first_order_date,
                 'last_order_date' => $customer->last_order_date,
                 'badge' => $badge,
+                'assigned_badge' => $assignedBadge,
                 'orders' => $orders
             ]
         ]);
+    }
+
+    private function badgeMapForPhones($phones): array
+    {
+        $phones = collect($phones)->filter()->unique()->values();
+        if ($phones->isEmpty()) {
+            return [];
+        }
+
+        return Customer::with('badge')
+            ->whereIn('phone', $phones)
+            ->get()
+            ->mapWithKeys(function (Customer $customer) {
+                return [$customer->phone => CustomerBadge::payload($customer->badge?->badge_title)];
+            })
+            ->all();
     }
 }

@@ -4,12 +4,15 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\AbandonedCheckout;
+use App\Models\Customer;
+use App\Models\CustomerBadge;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductSize;
 use App\Models\Size;
 use App\Models\User;
+use App\Services\CustomerService;
 use App\Services\FacebookConversionService;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
@@ -21,11 +24,13 @@ class OrderController extends Controller
 {
     protected $facebookService;
     protected $smsService;
+    protected $customerService;
 
-    public function __construct(FacebookConversionService $facebookService,SmsService $smsService)
+    public function __construct(FacebookConversionService $facebookService, SmsService $smsService, CustomerService $customerService)
     {
         $this->facebookService = $facebookService;
         $this->smsService = $smsService;
+        $this->customerService = $customerService;
     }
 
     /**
@@ -81,9 +86,13 @@ class OrderController extends Controller
             })
             ->latest()
             ->paginate(50);
-        $orders->getCollection()->transform(function ($order) {
+
+        $badgeMap = $this->badgeMapForPhones($orders->getCollection()->pluck('phone'));
+
+        $orders->getCollection()->transform(function ($order) use ($badgeMap) {
             $orderCount = Order::where('phone', $order->phone)->count();
             $order->customer_type = $orderCount > 1 ? 'Repeat Customer' : 'New';
+            $order->assigned_badge = $badgeMap[$order->phone] ?? null;
 
             return $order;
         });
@@ -263,11 +272,13 @@ class OrderController extends Controller
             $total = $request->total_amount;
 
             // Create order
+            $customer = $this->customerService->upsertFromOrder($request->name, $request->phone);
+
             $order = Order::create([
                 'order_number' => 'ORD-'.rand(10000, 99999),
                 'name' => $request->name,
                 'phone' => $request->phone,
-                'user_id' => $request->user_id ?? null,
+                'user_id' => $request->user_id ?? $customer?->user_id,
                 'address' => $request->address,
                 'district' => $request->district,
                 'subtotal' => $subtotal,
@@ -433,6 +444,8 @@ class OrderController extends Controller
     public function show($id)
     {
         $order = Order::with(['orderItems.size'])->findOrFail($id);
+        $badgeMap = $this->badgeMapForPhones(collect([$order->phone]));
+        $order->assigned_badge = $badgeMap[$order->phone] ?? null;
 
         return response()->json([
             'order' => $order,
@@ -612,6 +625,8 @@ class OrderController extends Controller
             $subtotal = collect($request->items)->sum('totalPrice');
             $total = $subtotal + $request->shipping_cost;
 
+            $this->customerService->upsertFromOrder($request->name, $request->phone);
+
             // Update order basic info
             $order->update([
                 'name' => $request->name,
@@ -774,5 +789,21 @@ class OrderController extends Controller
                 ? Carbon::parse($endDate, $timezone)->endOfDay()->utc()
                 : null,
         ];
+    }
+
+    private function badgeMapForPhones($phones): array
+    {
+        $phones = collect($phones)->filter()->unique()->values();
+        if ($phones->isEmpty()) {
+            return [];
+        }
+
+        return Customer::with('badge')
+            ->whereIn('phone', $phones)
+            ->get()
+            ->mapWithKeys(function (Customer $customer) {
+                return [$customer->phone => CustomerBadge::payload($customer->badge?->badge_title)];
+            })
+            ->all();
     }
 }

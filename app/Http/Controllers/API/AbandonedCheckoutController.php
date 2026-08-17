@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\AbandonedCheckout;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\CustomerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class AbandonedCheckoutController extends Controller
 {
+    public function __construct(protected CustomerService $customerService)
+    {
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -163,6 +168,8 @@ class AbandonedCheckoutController extends Controller
 
             $subtotal = collect($validated['cart'])->sum('totalPrice');
             $total = $subtotal + $validated['shipping_cost'];
+
+            $this->customerService->upsertFromOrder($validated['name'], $validated['phone']);
 
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
