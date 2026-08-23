@@ -2,6 +2,14 @@
 
 return [
 
+    'bdcourier' => [
+        'fraud_check_url' => env(
+            'BDCOURIER_FRAUD_CHECK_URL',
+            'https://api.bdcourier.com/courier-check'
+        ),
+        'timeout' => (int) env('BDCOURIER_TIMEOUT', 15),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

@@ -20,6 +20,8 @@ use App\Http\Controllers\API\DashboardSummaryController;
 use App\Http\Controllers\API\SalesReportController;
 use App\Http\Controllers\API\PathaoController;
 use App\Http\Controllers\API\MetaCatalogController;
+use App\Http\Controllers\API\FraudCheckerSettingController;
+use App\Http\Controllers\API\OrderFraudCheckController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\ProductStockController;
 use App\Http\Controllers\API\RolePermissionController;
@@ -212,6 +214,9 @@ Route::middleware(['permission:download orders'])
 Route::middleware(['permission:order_status'])
     ->post('order_status/{id}', [OrderController::class, 'order_status']);
 
+Route::middleware(['permission:view orders'])
+    ->post('orders/{order}/courier-check', OrderFraudCheckController::class);
+
 // Incomplete order tracking 
 Route::middleware(['permission:incomplete_order'])->get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
 Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 'store']);
@@ -306,6 +311,18 @@ Route::middleware(['permission:edit facebook settings'])
 
 Route::middleware(['permission:test facebook settings'])
     ->post('/facebook-settings/test', [FacebookSettingController::class, 'testConnection']);
+
+// --------------------------
+// COURIER CHECKER SETTINGS
+// --------------------------
+Route::middleware(['permission:view settings'])
+    ->get('/fraud-checker/settings', [FraudCheckerSettingController::class, 'show']);
+
+Route::middleware(['permission:edit settings'])
+    ->put('/fraud-checker/settings', [FraudCheckerSettingController::class, 'update']);
+
+Route::middleware(['permission:edit settings'])
+    ->post('/fraud-checker/settings/test', [FraudCheckerSettingController::class, 'test']);
 
 // Customer Leaderboard Routes (Permission Protected Individually)
 Route::prefix('customers')->group(function () {

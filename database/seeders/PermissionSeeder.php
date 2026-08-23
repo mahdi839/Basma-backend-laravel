@@ -112,6 +112,8 @@ class PermissionSeeder extends Seeder
             'delete banners',
             'view dashboard',
             'view dashboard summary',
+            'view settings',
+            'edit settings',
             'view leaderboard',
             'view statistics',
             'view customer details',
