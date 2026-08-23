@@ -19,6 +19,7 @@ use App\Http\Controllers\API\CustomerLeaderboardController;
 use App\Http\Controllers\API\DashboardSummaryController;
 use App\Http\Controllers\API\SalesReportController;
 use App\Http\Controllers\API\PathaoController;
+use App\Http\Controllers\API\MetaCatalogController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\ProductStockController;
 use App\Http\Controllers\API\RolePermissionController;
@@ -41,6 +42,7 @@ Route::get('/shop/filters', [ProductController::class, 'shopFilters']);
 
 // Products, Banners, Sizes, Categories (frontend only)
 Route::apiResource('products', ProductController::class)->only(['index', 'show']);
+Route::get('meta/catalog.csv', MetaCatalogController::class)->name('meta.catalog.feed');
 Route::apiResource('banners', BannerController::class)->only(['index', 'show']);
 Route::apiResource('sizes', SizeController::class)->only(['index', 'show']);
 Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
