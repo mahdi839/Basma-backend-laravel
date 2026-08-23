@@ -68,6 +68,21 @@ class FraudCheckerSettingController extends Controller
         ]);
     }
 
+    public function plan(Request $request, BdcourierFraudCheckService $service): JsonResponse
+    {
+        $forceRefresh = $request->boolean('force_refresh');
+
+        $result = $service->plan(
+            forceRefresh: $forceRefresh,
+            allowDisabled: true
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $result,
+        ]);
+    }
+
     private function settingsPayload(?FraudCheckerSetting $settings): array
     {
         $apiKey = $settings?->api_key;

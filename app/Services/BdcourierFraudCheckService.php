@@ -10,6 +10,45 @@ use Illuminate\Support\Facades\Http;
 
 class BdcourierFraudCheckService
 {
+    public function plan(
+        bool $forceRefresh = false,
+        bool $allowDisabled = false,
+        ?FraudCheckerSetting $settings = null
+    ): array {
+        $settings ??= FraudCheckerSetting::current();
+
+        if (! $settings || blank($settings->api_key)) {
+            throw new FraudCheckerException(
+                'Courier checker API key is not configured. Open Dashboard Settings to configure it.'
+            );
+        }
+
+        if (! $allowDisabled && ! $settings->is_active) {
+            throw new FraudCheckerException('Courier checker is currently disabled.');
+        }
+
+        $cacheMinutes = min(15, max(0, (int) $settings->cache_minutes));
+        $cacheKey = 'bdcourier-plan:v1:'.hash('sha256', $settings->api_key);
+
+        if (! $forceRefresh && $cacheMinutes > 0) {
+            $cached = Cache::get($cacheKey);
+
+            if (is_array($cached)) {
+                $cached['meta']['cached'] = true;
+
+                return $cached;
+            }
+        }
+
+        $result = $this->requestPlan($settings->api_key);
+
+        if ($cacheMinutes > 0) {
+            Cache::put($cacheKey, $result, now()->addMinutes($cacheMinutes));
+        }
+
+        return $result;
+    }
+
     public function check(
         string $phone,
         bool $forceRefresh = false,
@@ -116,6 +155,77 @@ class BdcourierFraudCheckService
         return $this->normalizeResponse($phone, $payload);
     }
 
+    private function requestPlan(string $apiKey): array
+    {
+        try {
+            $response = Http::acceptJson()
+                ->withToken($apiKey)
+                ->timeout((int) config('services.bdcourier.timeout', 15))
+                ->get((string) config('services.bdcourier.my_plan_url'));
+        } catch (ConnectionException) {
+            throw new FraudCheckerException(
+                'The courier plan service could not be reached. Please try again.',
+                502
+            );
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            throw new FraudCheckerException(
+                'The courier plan service returned an invalid response.',
+                502
+            );
+        }
+
+        if (! $response->successful() || ($payload['status'] ?? null) !== 'success') {
+            $message = (string) ($payload['message'] ?? 'Unable to load the courier plan.');
+            $status = $response->status();
+
+            if (in_array($status, [401, 403], true)) {
+                $message = 'The courier checker rejected the configured API key.';
+                $status = 422;
+            } elseif ($status === 429) {
+                $message = 'The courier checker rate limit was reached. Please try again later.';
+            } elseif ($response->serverError()) {
+                $message = 'The courier plan service is temporarily unavailable.';
+                $status = 502;
+            } elseif ($status < 400) {
+                $status = 422;
+            }
+
+            throw new FraudCheckerException($message, $status);
+        }
+
+        $data = is_array($payload['data'] ?? null) ? $payload['data'] : [];
+
+        return [
+            'plan' => [
+                'has_subscription' => (bool) ($data['has_subscription'] ?? false),
+                'plan_id' => $data['plan_id'] ?? null,
+                'plan_name' => (string) ($data['plan_name'] ?? 'No active plan'),
+                'plan_type' => (string) ($data['plan_type'] ?? ''),
+                'is_free' => (bool) ($data['is_free'] ?? false),
+                'status' => (string) ($data['status'] ?? 'unknown'),
+                'next_due_date' => $data['next_due_date'] ?? null,
+                'expires_at' => $data['expires_at'] ?? null,
+                'days_remaining' => max(0, (int) ($data['days_remaining'] ?? 0)),
+                'frequency' => (string) ($data['frequency'] ?? ''),
+                'price' => is_numeric($data['price'] ?? null) ? (float) $data['price'] : null,
+                'api_calls' => max(0, (int) ($data['api_calls'] ?? 0)),
+                'paid_calls' => max(0, (int) ($data['paid_calls'] ?? 0)),
+                'call_limit' => max(0, (int) ($data['call_limit'] ?? 0)),
+                'paid_limit' => max(0, (int) ($data['paid_limit'] ?? 0)),
+                'remaining_free_calls' => max(0, (int) ($data['remaining_free_calls'] ?? 0)),
+                'remaining_paid_calls' => max(0, (int) ($data['remaining_paid_calls'] ?? 0)),
+            ],
+            'meta' => [
+                'cached' => false,
+                'checked_at' => now()->toIso8601String(),
+            ],
+        ];
+    }
+
     private function normalizeResponse(string $phone, array $payload): array
     {
         $providerData = is_array($payload['data'] ?? null) ? $payload['data'] : [];
@@ -165,11 +275,13 @@ class BdcourierFraudCheckService
 
     private function parcelStats(array $data): array
     {
+        $ratio = max(0, min(100, round((float) ($data['success_ratio'] ?? 0), 2)));
+
         return [
             'total_parcel' => max(0, (int) ($data['total_parcel'] ?? 0)),
             'success_parcel' => max(0, (int) ($data['success_parcel'] ?? 0)),
             'cancelled_parcel' => max(0, (int) ($data['cancelled_parcel'] ?? 0)),
-            'success_ratio' => max(0, min(100, round((float) ($data['success_ratio'] ?? 0), 2))),
+            'success_ratio' => $ratio == (int) $ratio ? (int) $ratio : $ratio,
         ];
     }
 

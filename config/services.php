@@ -7,6 +7,10 @@ return [
             'BDCOURIER_FRAUD_CHECK_URL',
             'https://api.bdcourier.com/courier-check'
         ),
+        'my_plan_url' => env(
+            'BDCOURIER_MY_PLAN_URL',
+            'https://api.bdcourier.com/my-plan'
+        ),
         'timeout' => (int) env('BDCOURIER_TIMEOUT', 15),
     ],
 

@@ -318,6 +318,9 @@ Route::middleware(['permission:test facebook settings'])
 Route::middleware(['permission:view settings'])
     ->get('/fraud-checker/settings', [FraudCheckerSettingController::class, 'show']);
 
+Route::middleware(['permission:view settings'])
+    ->get('/fraud-checker/plan', [FraudCheckerSettingController::class, 'plan']);
+
 Route::middleware(['permission:edit settings'])
     ->put('/fraud-checker/settings', [FraudCheckerSettingController::class, 'update']);
 
