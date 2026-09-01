@@ -12,6 +12,7 @@ use App\Http\Controllers\API\OrderController;
 use App\Http\Controllers\API\ProductsSlotController;
 use App\Http\Controllers\API\ShippingCostController;
 use App\Http\Controllers\API\FooterSettingController;
+use App\Http\Controllers\API\SiteSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
 use App\Http\Controllers\API\CustomerController;
@@ -70,6 +71,7 @@ Route::apiResource('orders', OrderController::class)->only(['store']);
 // Footer & Social links (public fetch)
 Route::apiResource('footer-settings', FooterSettingController::class);
 Route::get('social-links-first', [SocialLinkController::class, 'getFirst']);
+Route::get('site-settings', [SiteSettingController::class, 'show']);
 
 // About Us (frontend fetch)
 Route::get('about-us', [AboutUsController::class, 'index']);
@@ -323,6 +325,9 @@ Route::middleware(['permission:view settings'])
 
 Route::middleware(['permission:edit settings'])
     ->put('/fraud-checker/settings', [FraudCheckerSettingController::class, 'update']);
+
+Route::middleware(['auth:sanctum', 'permission:edit settings'])
+    ->put('site-settings', [SiteSettingController::class, 'update']);
 
 Route::middleware(['permission:edit settings'])
     ->post('/fraud-checker/settings/test', [FraudCheckerSettingController::class, 'test']);
