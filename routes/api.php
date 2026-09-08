@@ -14,6 +14,7 @@ use App\Http\Controllers\API\ShippingCostController;
 use App\Http\Controllers\API\FooterSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
+use App\Http\Controllers\API\SeoController;
 use App\Http\Controllers\API\CustomerController;
 use App\Http\Controllers\API\CustomerLeaderboardController;
 use App\Http\Controllers\API\DashboardSummaryController;
@@ -53,6 +54,10 @@ Route::get('/category-slug-products/{slug}', [ProductController::class, 'categor
 
 // product search
 Route::get('/product-search', [ProductController::class, 'searchProducts']);
+
+// SEO
+Route::get('seo/sitemap', [SeoController::class, 'sitemap']);
+Route::get('seo/category/{slug}', [SeoController::class, 'categoryBySlug']);
 
 // Frontend-specific endpoints
 Route::get('frontend/categories', [CategoryController::class, 'frontEndIndex']);
