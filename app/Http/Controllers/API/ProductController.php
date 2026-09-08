@@ -775,7 +775,7 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'success',
-            'data' => $products->items(),
+            'data' => array_values($products->items()),
             'pagination' => [
                 'current_page' => $products->currentPage(),
                 'last_page' => $products->lastPage(),
