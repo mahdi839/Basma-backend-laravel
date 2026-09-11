@@ -12,6 +12,8 @@ return [
         'https://ibtikarbd.com',
         'https://eyarafashion.com',  // ← Add your production domain
         'https://www.eyarafashion.com',  // ← Add www version too
+         'https://eyarafashion.xyz',  // ← Add your production domain
+        'https://www.eyarafashion.xyz',  
     ],
 
     'allowed_origins_patterns' => [],
