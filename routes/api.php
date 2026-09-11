@@ -12,6 +12,7 @@ use App\Http\Controllers\API\OrderController;
 use App\Http\Controllers\API\ProductsSlotController;
 use App\Http\Controllers\API\ShippingCostController;
 use App\Http\Controllers\API\FooterSettingController;
+use App\Http\Controllers\API\SiteSettingController;
 use App\Http\Controllers\API\SocialLinkController;
 use App\Http\Controllers\API\AboutUsController;
 use App\Http\Controllers\API\SeoController;
@@ -20,6 +21,9 @@ use App\Http\Controllers\API\CustomerLeaderboardController;
 use App\Http\Controllers\API\DashboardSummaryController;
 use App\Http\Controllers\API\SalesReportController;
 use App\Http\Controllers\API\PathaoController;
+use App\Http\Controllers\API\MetaCatalogController;
+use App\Http\Controllers\API\FraudCheckerSettingController;
+use App\Http\Controllers\API\OrderFraudCheckController;
 use App\Http\Controllers\Api\ProductVariantController;
 use App\Http\Controllers\ProductStockController;
 use App\Http\Controllers\API\RolePermissionController;
@@ -42,6 +46,7 @@ Route::get('/shop/filters', [ProductController::class, 'shopFilters']);
 
 // Products, Banners, Sizes, Categories (frontend only)
 Route::apiResource('products', ProductController::class)->only(['index', 'show']);
+Route::get('meta/catalog.csv', MetaCatalogController::class)->name('meta.catalog.feed');
 Route::apiResource('banners', BannerController::class)->only(['index', 'show']);
 Route::apiResource('sizes', SizeController::class)->only(['index', 'show']);
 Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
@@ -71,6 +76,7 @@ Route::apiResource('orders', OrderController::class)->only(['store']);
 // Footer & Social links (public fetch)
 Route::apiResource('footer-settings', FooterSettingController::class);
 Route::get('social-links-first', [SocialLinkController::class, 'getFirst']);
+Route::get('site-settings', [SiteSettingController::class, 'show']);
 
 // About Us (frontend fetch)
 Route::get('about-us', [AboutUsController::class, 'index']);
@@ -215,6 +221,9 @@ Route::middleware(['permission:download orders'])
 Route::middleware(['permission:order_status'])
     ->post('order_status/{id}', [OrderController::class, 'order_status']);
 
+Route::middleware(['permission:view orders'])
+    ->post('orders/{order}/courier-check', OrderFraudCheckController::class);
+
 // Incomplete order tracking 
 Route::middleware(['permission:incomplete_order'])->get('/abandoned-checkouts', [AbandonedCheckoutController::class, 'index']);
 Route::post('/track-abandoned-checkout', [AbandonedCheckoutController::class, 'store']);
@@ -309,6 +318,24 @@ Route::middleware(['permission:edit facebook settings'])
 
 Route::middleware(['permission:test facebook settings'])
     ->post('/facebook-settings/test', [FacebookSettingController::class, 'testConnection']);
+
+// --------------------------
+// COURIER CHECKER SETTINGS
+// --------------------------
+Route::middleware(['permission:view settings'])
+    ->get('/fraud-checker/settings', [FraudCheckerSettingController::class, 'show']);
+
+Route::middleware(['permission:view settings'])
+    ->get('/fraud-checker/plan', [FraudCheckerSettingController::class, 'plan']);
+
+Route::middleware(['permission:edit settings'])
+    ->put('/fraud-checker/settings', [FraudCheckerSettingController::class, 'update']);
+
+Route::middleware(['auth:sanctum', 'permission:edit settings'])
+    ->put('site-settings', [SiteSettingController::class, 'update']);
+
+Route::middleware(['permission:edit settings'])
+    ->post('/fraud-checker/settings/test', [FraudCheckerSettingController::class, 'test']);
 
 // Customer Leaderboard Routes (Permission Protected Individually)
 Route::prefix('customers')->group(function () {

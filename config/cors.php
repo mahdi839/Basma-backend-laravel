@@ -10,8 +10,8 @@ return [
         'https://basma-front-end-next-js-xotm.vercel.app',
         'https://basma-front-end-next-js.vercel.app',
         'https://ibtikarbd.com',
-        'https://eyarafashion.xyz',  // ← Add your production domain
-        'https://www.eyarafashion.xyz',  // ← Add www version too
+        'https://eyarafashion.com',  // ← Add your production domain
+        'https://www.eyarafashion.com',  // ← Add www version too
     ],
 
     'allowed_origins_patterns' => [],
