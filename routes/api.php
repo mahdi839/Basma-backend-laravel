@@ -25,6 +25,7 @@ use App\Http\Controllers\API\MetaCatalogController;
 use App\Http\Controllers\API\FraudCheckerSettingController;
 use App\Http\Controllers\API\OrderFraudCheckController;
 use App\Http\Controllers\Api\ProductVariantController;
+use App\Http\Controllers\API\InventoryController;
 use App\Http\Controllers\ProductStockController;
 use App\Http\Controllers\API\RolePermissionController;
 use Illuminate\Support\Facades\Cache;
@@ -51,6 +52,9 @@ Route::apiResource('banners', BannerController::class)->only(['index', 'show']);
 Route::apiResource('sizes', SizeController::class)->only(['index', 'show']);
 Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
 Route::get('/product_add_category', [CategoryController::class, 'product_add_category']);
+
+// Colour + size filter options for a stock category
+Route::get('/category-filters/{slug}', [ProductController::class, 'categoryFilters']);
 
 // products whos category is same
 Route::get('/category_products/{id}', [ProductController::class, 'category_products']);
@@ -250,6 +254,20 @@ Route::middleware(['permission:delete product variants'])
 // --------------------------
 // INVENTORY PERMISSIONS
 // --------------------------
+Route::middleware(['auth:sanctum', 'permission:manage inventory'])->group(function () {
+    Route::get('inventory/summary', [InventoryController::class, 'summary']);
+    Route::get('inventory/variants', [InventoryController::class, 'index']);
+    Route::get('inventory/movements', [InventoryController::class, 'movements']);
+    Route::get('inventory/products', [InventoryController::class, 'trackedProducts']);
+    Route::get('inventory/sizes', [InventoryController::class, 'sizes']);
+    Route::get('inventory/products/{product}/matrix', [InventoryController::class, 'matrix']);
+    Route::put('inventory/products/{product}/matrix', [InventoryController::class, 'saveMatrix']);
+    Route::post('inventory/stock-in', [InventoryController::class, 'stockIn']);
+    Route::post('inventory/adjust', [InventoryController::class, 'adjust']);
+});
+
+// Legacy product-level stock endpoints. Superseded by the routes above and kept
+// only so nothing 404s mid-deploy.
 Route::middleware(['permission:manage inventory'])
     ->apiResource('inventory-management', ProductStockController::class)
     ->only(['index', 'store', 'update', 'destroy']);

@@ -58,6 +58,7 @@ class CategoryController extends Controller
             'priority'  => 'nullable|integer|min:0',
             'home_category' => 'nullable|boolean',
             'size_guide_type' => 'nullable|in:shoe,dress',
+            'track_inventory' => 'nullable|boolean',
         ]);
 
         $category = Category::create([
@@ -67,6 +68,7 @@ class CategoryController extends Controller
             'priority'  => $request->priority ?? 0,
             'home_category' => $request->home_category ?? false,
             'size_guide_type' => $request->size_guide_type,
+            'track_inventory' => $request->boolean('track_inventory'),
         ]);
         $this->clearHomeCategoryCach();
         // Simple cache forget
@@ -100,7 +102,13 @@ class CategoryController extends Controller
             'priority'  => 'nullable|integer|min:0',
             'home_category' => 'nullable|boolean',
             'size_guide_type' => 'nullable|in:shoe,dress',
+            'track_inventory' => 'nullable|boolean',
+            'apply_tracking_to_products' => 'nullable|boolean',
         ]);
+
+        $tracksInventory = $request->has('track_inventory')
+            ? $request->boolean('track_inventory')
+            : (bool) $category->track_inventory;
 
         $category->update([
             'name'      => $request->name,
@@ -109,10 +117,19 @@ class CategoryController extends Controller
             'priority'  => $request->priority ?? 0,
             'home_category' => $request->home_category ?? $category->home_category,
             'size_guide_type' => $request->size_guide_type ?? $category->size_guide_type,
+            'track_inventory' => $tracksInventory,
         ]);
+
+        // Optional bulk action: stamp the flag onto every product in this category
+        // so their own toggle reflects it rather than only inheriting.
+        if ($request->boolean('apply_tracking_to_products')) {
+            $category->products()->update(['track_inventory' => $tracksInventory]);
+        }
+
         $this->clearHomeCategoryCach();
         // Simple cache forget
         Cache::forget('categoryHomePage');
+        Cache::forget("category_slug_products:{$category->slug}:page:1");
         return response()->json($category);
     }
 

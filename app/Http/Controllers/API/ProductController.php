@@ -6,16 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\ProductVariant;
 use App\Models\Size;
+use App\Services\InventoryService;
 use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
 
     use ClearsHomeCache;
+
+    public function __construct(protected InventoryService $inventory)
+    {
+    }
     /**
      * Display a listing of the resource.
      */
@@ -24,6 +31,12 @@ class ProductController extends Controller
         $slug = $request->query('slug', '');
         $search = $request->search;
         $status = $request->query('status', '');
+
+        // Storefront filters, only meaningful on a stock category.
+        $sizeIds = $this->asIdArray($request->query('sizes'));
+        $colorNames = $this->asStringArray($request->query('colors'));
+        $inStockOnly = $request->boolean('in_stock_only');
+
         $allProducts = Product::with(['images', 'sizes', 'faqs', 'category', 'specifications'])
             ->when($slug, function ($q) use ($slug) {
                 $q->whereHas('category', function ($query) use ($slug) {
@@ -40,8 +53,34 @@ class ProductController extends Controller
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
+            // Each filter matches against the variant matrix, so "Maroon + M"
+            // only returns products that actually have that combination sellable.
+            ->when($sizeIds !== [], function ($q) use ($sizeIds, $inStockOnly) {
+                $q->whereHas('variants', function ($v) use ($sizeIds, $inStockOnly) {
+                    $v->whereIn('size_id', $sizeIds)->where('is_active', true);
+                    if ($inStockOnly) {
+                        $v->whereRaw('(stock - reserved) > 0');
+                    }
+                });
+            })
+            ->when($colorNames !== [], function ($q) use ($colorNames, $inStockOnly) {
+                $q->whereHas('variants', function ($v) use ($colorNames, $inStockOnly) {
+                    $v->where('is_active', true)
+                        ->whereHas('color', fn ($c) => $c->whereIn('name', $colorNames));
+                    if ($inStockOnly) {
+                        $v->whereRaw('(stock - reserved) > 0');
+                    }
+                });
+            })
+            ->when($inStockOnly && $sizeIds === [] && $colorNames === [], function ($q) {
+                $q->whereHas('variants', function ($v) {
+                    $v->where('is_active', true)->whereRaw('(stock - reserved) > 0');
+                });
+            })
             ->latest()
             ->paginate(20);
+
+        $this->attachInventorySummary($allProducts->getCollection());
 
         return response()->json([
             'message' => 'success',
@@ -57,6 +96,126 @@ class ProductController extends Controller
     }
 
     /**
+     * Colour and size options for a category's filter bar, plus whether that
+     * category is a stock category at all. The storefront hides the whole filter
+     * panel when track_inventory is false.
+     */
+    public function categoryFilters(string $slug)
+    {
+        $category = Category::where('slug', $slug)->firstOrFail();
+
+        $productIds = Product::whereHas('category', fn ($q) => $q->where('categories.id', $category->id))
+            ->whereIn('status', ['in-stock', 'prebook'])
+            ->pluck('id');
+
+        $variants = ProductVariant::with(['color:id,name,code,image', 'size:id,size'])
+            ->whereIn('product_id', $productIds)
+            ->where('is_active', true)
+            ->get();
+
+        $sizes = $variants
+            ->filter(fn ($v) => $v->size)
+            ->groupBy('size_id')
+            ->map(fn ($group) => [
+                'id' => (int) $group->first()->size_id,
+                'size' => $group->first()->size->size,
+                'available' => (int) $group->sum(fn ($v) => max(0, $v->available)),
+            ])
+            ->sortBy('id')
+            ->values();
+
+        $colors = $variants
+            ->filter(fn ($v) => $v->color && $v->color->name)
+            ->groupBy(fn ($v) => $v->color->name)
+            ->map(fn ($group, $name) => [
+                'name' => $name,
+                'code' => $group->first()->color->code,
+                'image' => $group->first()->color->image,
+                'available' => (int) $group->sum(fn ($v) => max(0, $v->available)),
+            ])
+            ->sortBy('name')
+            ->values();
+
+        return response()->json([
+            'message' => 'success',
+            'data' => [
+                'category' => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'track_inventory' => (bool) $category->track_inventory,
+                ],
+                'sizes' => $sizes,
+                'colors' => $colors,
+            ],
+        ]);
+    }
+
+    /**
+     * Add a light availability aggregate to a listing page in one query, rather
+     * than loading every variant of every product.
+     */
+    private function attachInventorySummary($products): void
+    {
+        if ($products->isEmpty()) {
+            return;
+        }
+
+        $totals = ProductVariant::selectRaw(
+            'product_id,
+             SUM(GREATEST(stock - reserved, 0)) AS available,
+             MAX(allow_preorder) AS allow_preorder'
+        )
+            ->whereIn('product_id', $products->pluck('id'))
+            ->where('is_active', true)
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        foreach ($products as $product) {
+            $tracks = $product->tracksInventory();
+            $row = $totals->get($product->id);
+            $available = (int) ($row->available ?? 0);
+
+            $product->setAttribute('inventory_summary', [
+                'track_inventory' => $tracks,
+                'available' => $tracks ? $available : null,
+                'in_stock' => $tracks ? $available > 0 : true,
+                'allow_preorder' => (bool) ($row->allow_preorder ?? false),
+            ]);
+        }
+    }
+
+    /** Accepts `1,2,3` or `sizes[]=1&sizes[]=2`. */
+    private function asIdArray($value): array
+    {
+        if (is_string($value)) {
+            $value = explode(',', $value);
+        }
+
+        return collect($value ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function asStringArray($value): array
+    {
+        if (is_string($value)) {
+            $value = explode(',', $value);
+        }
+
+        return collect($value ?? [])
+            ->map(fn ($item) => trim((string) $item))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -68,6 +227,13 @@ class ProductController extends Controller
             'description'       => 'nullable',
             'discount'          => 'nullable',
             'status'            => 'required|in:in-stock,sold,prebook',
+
+            // inventory
+            'track_inventory'    => 'nullable|boolean',
+            'preorder_mode'      => 'nullable|in:off,always,when_out_of_stock',
+            'preorder_eta_days'  => 'nullable|integer|min:0|max:365',
+            'preorder_note'      => 'nullable|string|max:255',
+            'low_stock_threshold' => 'nullable|integer|min:0',
 
             // images
             'image'   => 'required|array',
@@ -140,6 +306,11 @@ class ProductController extends Controller
             'discount'          => $validated['discount'] ?? null,
             'status'            => $validated['status'],
             'colors'            => !empty($colorsData) ? $colorsData : null,
+            'track_inventory'   => $request->boolean('track_inventory'),
+            'preorder_mode'     => $validated['preorder_mode'] ?? 'off',
+            'preorder_eta_days' => $validated['preorder_eta_days'] ?? null,
+            'preorder_note'     => $validated['preorder_note'] ?? null,
+            'low_stock_threshold' => $validated['low_stock_threshold'] ?? null,
         ]);
 
         // Product images
@@ -191,6 +362,11 @@ class ProductController extends Controller
             }
         }
 
+        // Mirror colours into product_colors, then create a stock row for every
+        // colour x size combination. Both are no-ops when the product has neither.
+        $this->inventory->syncProductColors($product, $colorsData);
+        $this->inventory->syncProductVariants($product);
+
         $this->clearHomeCategoryCach();
         return response()->json([
             'message' => 'product created successfully',
@@ -203,15 +379,18 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $cacheKey = "product:detail:v2:{$id}";
+        $cacheKey = "product:detail:v3:{$id}";
 
+        // Product structure is cached; live stock is not, so the page can never
+        // show a stale "in stock".
         $product = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($id) {
             return Product::with([
                 'images:id,product_id,image,position',
                 'sizes:id,size',
                 'faqs:id,product_id,question,answer',
-                'category:id,name',
-                'specifications:id,product_id,key,value,order'
+                'category:id,name,track_inventory',
+                'specifications:id,product_id,key,value,order',
+                'productColors:id,product_id,name,code,image,position,legacy_json_id',
             ])
                 ->select(
                     'id',
@@ -223,14 +402,22 @@ class ProductController extends Controller
                     'video_url',
                     'discount',
                     'status',
-                    'colors'
+                    'colors',
+                    'track_inventory',
+                    'preorder_mode',
+                    'preorder_eta_days',
+                    'preorder_note',
+                    'low_stock_threshold'
                 )
                 ->findOrFail($id);
         });
 
+        $payload = $product->toArray();
+        $payload['inventory'] = $this->inventory->availabilityFor($product);
+
         return response()->json([
             'message' => 'success',
-            'data'    => $product,
+            'data'    => $payload,
         ], 200);
     }
 
@@ -246,6 +433,13 @@ class ProductController extends Controller
             'description'       => 'nullable',
             'discount'          => 'nullable',
             'status'            => 'required|in:in-stock,sold,prebook',
+
+            // inventory
+            'track_inventory'    => 'nullable|boolean',
+            'preorder_mode'      => 'nullable|in:off,always,when_out_of_stock',
+            'preorder_eta_days'  => 'nullable|integer|min:0|max:365',
+            'preorder_note'      => 'nullable|string|max:255',
+            'low_stock_threshold' => 'nullable|integer|min:0',
 
             // images
             'image'   => 'nullable|array',
@@ -356,6 +550,13 @@ class ProductController extends Controller
             'status'            => $validated['status'],
             'price'             => $validated['price'] ?? null,
             'colors'            => !empty($colorsData) ? $colorsData : null,
+            'track_inventory'   => $request->has('track_inventory')
+                ? $request->boolean('track_inventory')
+                : $product->track_inventory,
+            'preorder_mode'     => $validated['preorder_mode'] ?? $product->preorder_mode ?? 'off',
+            'preorder_eta_days' => $validated['preorder_eta_days'] ?? null,
+            'preorder_note'     => $validated['preorder_note'] ?? null,
+            'low_stock_threshold' => $validated['low_stock_threshold'] ?? null,
         ]);
 
         // Image deletions
@@ -448,6 +649,14 @@ class ProductController extends Controller
                 }
             }
         }
+
+        // Keep product_colors and the variant matrix in step with the new colour
+        // and size lists. Removed combinations are deactivated, not deleted, so
+        // stock history and order lines survive.
+        if ($request->has('colors')) {
+            $this->inventory->syncProductColors($product, $colorsData);
+        }
+        $this->inventory->syncProductVariants($product);
 
         $this->clearHomeCategoryCach();
         $this->clearRelatedCache($id);

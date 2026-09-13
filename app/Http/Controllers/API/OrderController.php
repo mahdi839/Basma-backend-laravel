@@ -10,27 +10,58 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductSize;
+use App\Models\ProductVariant;
 use App\Models\Size;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\CustomerService;
 use App\Services\FacebookConversionService;
+use App\Services\InventoryService;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
+    /** Mirrors the orders.status enum in the database. */
+    public const ORDER_STATUSES = [
+        'pending',
+        'placed',
+        'delivered',
+        'cancel',
+        'completed',
+        'cancelled',
+        'processing',
+        'returned',
+        'first_call',
+        'second_call',
+        'third_call',
+        'stock_sold',
+        'shipped_to_you',
+        'received_in_bd',
+        'order_sent_to_china',
+        'file_completed',
+        'order_confirmed',
+    ];
+
     protected $facebookService;
     protected $smsService;
     protected $customerService;
+    protected InventoryService $inventory;
 
-    public function __construct(FacebookConversionService $facebookService, SmsService $smsService, CustomerService $customerService)
-    {
+    public function __construct(
+        FacebookConversionService $facebookService,
+        SmsService $smsService,
+        CustomerService $customerService,
+        InventoryService $inventory
+    ) {
         $this->facebookService = $facebookService;
         $this->smsService = $smsService;
         $this->customerService = $customerService;
+        $this->inventory = $inventory;
     }
 
     /**
@@ -49,7 +80,7 @@ class OrderController extends Controller
         $product_id = $request->query('product_id', '');
         [$startAt, $endAt] = $this->orderDateBounds($start_date, $end_date);
 
-        $orders = Order::with('orderItems.size')
+        $orders = Order::with(['orderItems.size', 'orderItems.variant.color', 'orderItems.variant.size'])
             ->when($status, function ($q) use ($status) {
                 $q->where('status', $status);
             })
@@ -256,6 +287,11 @@ class OrderController extends Controller
             'cart.*.totalPrice' => 'required|numeric',
             'cart.*.colorImage' => 'sometimes|nullable',
             'cart.*.color_name' => 'sometimes|nullable',
+            // Inventory hints. Older storefront builds omit these and are
+            // resolved from colorImage / color_name instead.
+            'cart.*.variant_id' => 'sometimes|nullable|integer',
+            'cart.*.product_color_id' => 'sometimes|nullable|integer',
+            'cart.*.color_id' => 'sometimes|nullable|integer',
             'total_amount' => 'required|numeric',
             'advance_payment' => 'nullable|numeric|min:0',
             // Facebook tracking data
@@ -267,6 +303,20 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         try {
+            // Resolve every line to a stock row and lock it before anything is
+            // written, so two simultaneous checkouts cannot both take the last unit.
+            $plan = $this->planCartInventory($request->cart);
+
+            if ($plan['shortfalls'] !== [] && SiteSetting::inventoryEnforced()) {
+                DB::rollBack();
+
+                return response()->json([
+                    'message' => 'Some items are no longer available in the requested quantity.',
+                    'errors' => ['cart' => ['Stock changed while you were checking out.']],
+                    'shortfalls' => $plan['shortfalls'],
+                ], 422);
+            }
+
             // Calculate totals
             $subtotal = collect($request->cart)->sum('totalPrice');
             $total = $request->total_amount;
@@ -294,38 +344,29 @@ class OrderController extends Controller
             $contentIds = [];
             $contents = [];
 
-            foreach ($request->cart as $item) {
-                // ✅ If size is selected → stock-based product
-                if ($item['size']) {
+            foreach ($request->cart as $index => $item) {
+                $line = $plan['lines'][$index] ?? null;
 
-                    $productSize = ProductSize::where('product_id', $item['id'])
-                        ->where('size_id', $item['size'])
-                        ->lockForUpdate() // 🔒 IMPORTANT
-                        ->first();
-                    if (! $productSize) {
-                        throw new \Exception('Product size not found.');
-                    }
-
-                    // if ($productSize->stock < $item['qty']) {
-                    //     throw new \Exception(
-                    //         "Insufficient stock for {$item['title']} ({$item['size']})"
-                    //     );
-                    // }
-
-                    // 🔻 Reduce stock
-                    // $productSize->decrement('stock', $item['qty']);
-                }
-                OrderItem::create([
+                $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $item['id'],
+                    'product_variant_id' => $line['variant_id'] ?? null,
+                    'product_color_id' => $line['product_color_id'] ?? null,
                     'title' => $item['title'],
                     'selected_size' => $item['size'],
                     'unitPrice' => $item['unitPrice'],
                     'qty' => $item['qty'],
+                    'is_preorder' => $line['preorder'] ?? false,
                     'totalPrice' => $item['totalPrice'],
                     'colorImage' => $item['colorImage'] ?? '',
                     'color_name' => $item['color_name'] ?? '',
                 ]);
+
+                // Hold the units. Physical stock only drops once an admin sets
+                // the order to confirmed.
+                if (! empty($line['tracks']) && ! empty($line['variant_id'])) {
+                    $this->inventory->reserve($orderItem);
+                }
 
                 // Prepare Facebook data
                 $contentIds[] = (string) $item['id'];
@@ -409,11 +450,19 @@ class OrderController extends Controller
 
   public function order_status(Request $request, $id)
  {
+    $request->validate([
+        'status' => ['required', 'string', Rule::in(self::ORDER_STATUSES)],
+    ]);
+
     $order = Order::findOrFail($id);
 
     $order->update([
         'status' => $request->status,
     ]);
+
+    // Confirming deducts stock for real; cancelling or returning hands it back.
+    // Gated on each line's inventory_state, so repeating a status is a no-op.
+    $this->inventory->applyOrderStatus($order->id, $request->status, $request->user()?->id);
 
     if ($request->status === 'order_confirmed' || $request->status === 'cancelled') {
         if (!empty($order->phone)) {
@@ -642,20 +691,12 @@ class OrderController extends Controller
                 'total' => $total,
             ]);
 
-            // Delete removed items and restore stock
+            // Delete removed items, handing whatever they were holding back first.
             if (! empty($validated['deleted_items'])) {
                 foreach ($validated['deleted_items'] as $itemId) {
                     $item = OrderItem::find($itemId);
                     if ($item && $item->order_id == $order->id) {
-                        // Restore stock ONLY if size was selected
-                        if ($item->selected_size) {
-                            $productSize = ProductSize::where('product_id', $item->product_id)
-                                ->where('size_id', $item->selected_size)
-                                ->first();
-                            if ($productSize) {
-                                $productSize->increment('stock', $item->qty);
-                            }
-                        }
+                        $this->inventory->releaseForEdit($item, $request->user()?->id);
                         $item->delete();
                     }
                 }
@@ -671,82 +712,56 @@ class OrderController extends Controller
                     $colorName = $item['color']['name'];
                 }
 
+                $variant = $this->inventory->resolveVariant((int) $item['product_id'], [
+                    'product_color_id' => $item['color']['product_color_id'] ?? null,
+                    'color_id' => $item['color']['id'] ?? null,
+                    'color_image' => $colorImage,
+                    'color_name' => $colorName,
+                    'size_id' => $item['size_id'] ?? null,
+                ]);
+
                 // If item has ID and exists -> UPDATE
                 if (isset($item['id']) && in_array($item['id'], $existingItemIds)) {
                     $orderItem = OrderItem::find($item['id']);
 
-                    // Calculate stock changes
-                    $oldQty = $orderItem->qty;
-                    $oldSizeId = $orderItem->selected_size;
-                    $newQty = $item['qty'];
-                    $newSizeId = $item['size_id'] ?? null;
+                    // Hand back whatever the line was holding, then re-hold at the
+                    // new variant and quantity. Keeps edits balanced instead of the
+                    // old one-sided restore.
+                    $this->inventory->releaseForEdit($orderItem, $request->user()?->id);
 
-                    // Restore old stock ONLY if OLD item had a size
-                    if ($oldSizeId) {
-                        $oldProductSize = ProductSize::where('product_id', $orderItem->product_id)
-                            ->where('size_id', $oldSizeId)
-                            ->first();
-                        if ($oldProductSize) {
-                            $oldProductSize->increment('stock', $oldQty);
-                        }
-                    }
-
-                    // Update item
                     $orderItem->update([
                         'product_id' => $item['product_id'],
-                        'title' => $item['title'],
-                        'selected_size' => $newSizeId,
-                        'unitPrice' => $item['unitPrice'],
-                        'qty' => $newQty,
-                        'totalPrice' => $item['totalPrice'],
-                        'colorImage' => $colorImage ? url($colorImage) : '',
-                        'color_name' => $colorName??""
-                    ]);
-
-                    // Deduct new stock ONLY if NEW item has a size
-                    // if ($newSizeId) {
-                    //     $newProductSize = ProductSize::where('product_id', $item['product_id'])
-                    //         ->where('size_id', $newSizeId)
-                    //         ->lockForUpdate()
-                    //         ->first();
-
-                    //     if ($newProductSize) {
-                    //         if ($newProductSize->stock < $newQty) {
-                    //             throw new \Exception("Insufficient stock for {$item['title']}. Available: {$newProductSize->stock}, Requested: {$newQty}");
-                    //         }
-                    //         $newProductSize->decrement('stock', $newQty);
-                    //     }
-                    // }
-                }
-                // No ID or doesn't exist -> CREATE NEW
-                else {
-                    // Create the order item first
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => $item['product_id'],
+                        'product_variant_id' => $variant?->id,
+                        'product_color_id' => $variant?->product_color_id,
                         'title' => $item['title'],
                         'selected_size' => $item['size_id'] ?? null,
                         'unitPrice' => $item['unitPrice'],
                         'qty' => $item['qty'],
                         'totalPrice' => $item['totalPrice'],
                         'colorImage' => $colorImage ? url($colorImage) : '',
-                        'color_name' => $colorName??""
+                        'color_name' => $colorName ?? '',
+                        'inventory_state' => OrderItem::INV_NONE,
                     ]);
 
-                    // ONLY manage stock if size is selected
-                    if (! empty($item['size_id'])) {
-                        $productSize = ProductSize::where('product_id', $item['product_id'])
-                            ->where('size_id', $item['size_id'])
-                            ->lockForUpdate()
-                            ->first();
+                    $this->reserveOrCommit($order, $orderItem->fresh(), $request->user()?->id);
+                }
+                // No ID or doesn't exist -> CREATE NEW
+                else {
+                    $orderItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $item['product_id'],
+                        'product_variant_id' => $variant?->id,
+                        'product_color_id' => $variant?->product_color_id,
+                        'title' => $item['title'],
+                        'selected_size' => $item['size_id'] ?? null,
+                        'unitPrice' => $item['unitPrice'],
+                        'qty' => $item['qty'],
+                        'totalPrice' => $item['totalPrice'],
+                        'colorImage' => $colorImage ? url($colorImage) : '',
+                        'color_name' => $colorName ?? '',
+                    ]);
 
-                        // if ($productSize) {
-                        //     if ($productSize->stock < $item['qty']) {
-                        //         throw new \Exception("Insufficient stock for {$item['title']}. Available: {$productSize->stock}, Requested: {$item['qty']}");
-                        //     }
-                        //     $productSize->decrement('stock', $item['qty']);
-                        // }
-                    }
+                    $this->reserveOrCommit($order, $orderItem, $request->user()?->id);
                 }
             }
 
@@ -772,6 +787,97 @@ class OrderController extends Controller
     public function destroy(Order $order)
     {
         //
+    }
+
+    /**
+     * Put a line into the inventory state its order status already implies, so an
+     * admin adding an item to an order that is already confirmed deducts stock
+     * immediately instead of only reserving it.
+     */
+    private function reserveOrCommit(Order $order, OrderItem $item, ?int $userId): void
+    {
+        if (! $item->product_variant_id) {
+            return;
+        }
+
+        $product = Product::with('category:id,track_inventory')->find($item->product_id);
+
+        if (! $product || ! $product->tracksInventory()) {
+            return;
+        }
+
+        $this->inventory->reserve($item, $userId);
+
+        if (in_array($order->status, InventoryService::COMMIT_STATUSES, true)) {
+            $this->inventory->commit($item->fresh(), $userId);
+        }
+    }
+
+    /**
+     * Resolve each cart line to its stock row, lock it, and check availability.
+     *
+     * Must be called inside a transaction — the locks it takes are what stop two
+     * checkouts from selling the same last unit.
+     *
+     * @return array{lines: array<int, array>, shortfalls: array<int, array>}
+     */
+    private function planCartInventory(array $cart): array
+    {
+        $lines = [];
+        $shortfalls = [];
+
+        $products = Product::with('category:id,track_inventory')
+            ->whereIn('id', collect($cart)->pluck('id')->unique()->all())
+            ->get()
+            ->keyBy('id');
+
+        foreach ($cart as $index => $item) {
+            $product = $products->get($item['id']);
+            $tracks = $product ? $product->tracksInventory() : false;
+
+            $variant = $this->inventory->resolveVariant((int) $item['id'], [
+                'variant_id' => $item['variant_id'] ?? null,
+                'product_color_id' => $item['product_color_id'] ?? null,
+                'color_id' => $item['color_id'] ?? null,
+                'color_image' => $item['colorImage'] ?? null,
+                'color_name' => $item['color_name'] ?? null,
+                'size_id' => $item['size'] ?? null,
+            ]);
+
+            $line = [
+                'tracks' => $tracks,
+                'variant_id' => $variant?->id,
+                'product_color_id' => $variant?->product_color_id,
+                'preorder' => false,
+            ];
+
+            if (! $tracks || ! $variant) {
+                $lines[$index] = $line;
+
+                continue;
+            }
+
+            $locked = ProductVariant::whereKey($variant->id)->lockForUpdate()->first();
+            $check = $this->inventory->checkAvailability($locked, (int) $item['qty']);
+
+            $line['preorder'] = $check['preorder'];
+            $lines[$index] = $line;
+
+            if (! $check['ok']) {
+                $shortfalls[] = [
+                    'index' => $index,
+                    'product_id' => (int) $item['id'],
+                    'variant_id' => $variant->id,
+                    'title' => $item['title'],
+                    'variant_label' => $locked->label(),
+                    'requested' => (int) $item['qty'],
+                    'available' => $check['available'],
+                    'reason' => $check['reason'],
+                ];
+            }
+        }
+
+        return ['lines' => $lines, 'shortfalls' => $shortfalls];
     }
 
     /**

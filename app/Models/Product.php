@@ -10,6 +10,9 @@ class Product extends Model
 
     protected $casts = [
         'colors' => 'array',
+        'track_inventory' => 'boolean',
+        'preorder_eta_days' => 'integer',
+        'low_stock_threshold' => 'integer',
     ];
 
     protected $guarded = [];
@@ -45,7 +48,43 @@ class Product extends Model
 
     public function variants()
     {
-        return $this->hasMany(ProductVariant::class);
+        return $this->hasMany(ProductVariant::class)->orderBy('position');
+    }
+
+    public function activeVariants()
+    {
+        return $this->hasMany(ProductVariant::class)->where('is_active', true)->orderBy('position');
+    }
+
+    public function productColors()
+    {
+        return $this->hasMany(ProductColor::class)->orderBy('position');
+    }
+
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    /**
+     * True when this product's stock numbers are enforced. A product inherits the
+     * flag from any category marked as a stock category, so switching a category
+     * on is enough for the client.
+     */
+    public function tracksInventory(): bool
+    {
+        if ($this->track_inventory) {
+            return true;
+        }
+
+        return $this->relationLoaded('category')
+            ? $this->category->contains(fn ($category) => (bool) $category->track_inventory)
+            : $this->category()->where('track_inventory', true)->exists();
+    }
+
+    public function allowsPreorder(): bool
+    {
+        return in_array($this->preorder_mode, ['always', 'when_out_of_stock'], true);
     }
 
     public function orderItems()

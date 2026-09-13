@@ -6,15 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\AbandonedCheckout;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use App\Services\CustomerService;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class AbandonedCheckoutController extends Controller
 {
-    public function __construct(protected CustomerService $customerService)
-    {
+    public function __construct(
+        protected CustomerService $customerService,
+        protected InventoryService $inventory
+    ) {
     }
 
     public function store(Request $request)
@@ -188,9 +192,20 @@ class AbandonedCheckoutController extends Controller
             ]);
 
             foreach ($validated['cart'] as $item) {
-                OrderItem::create([
+                $variant = $this->inventory->resolveVariant((int) $item['id'], [
+                    'variant_id' => $item['variant_id'] ?? null,
+                    'product_color_id' => $item['product_color_id'] ?? null,
+                    'color_id' => $item['color_id'] ?? null,
+                    'color_image' => $item['colorImage'] ?? null,
+                    'color_name' => $item['color_name'] ?? null,
+                    'size_id' => $item['size'] ?? null,
+                ]);
+
+                $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $item['id'],
+                    'product_variant_id' => $variant?->id,
+                    'product_color_id' => $variant?->product_color_id,
                     'title' => $item['title'],
                     'selected_size' => ! empty($item['size']) ? $item['size'] : null,
                     'unitPrice' => $item['unitPrice'],
@@ -199,6 +214,15 @@ class AbandonedCheckoutController extends Controller
                     'colorImage' => $item['colorImage'] ?? '',
                     'color_name' => $item['color_name'] ?? '',
                 ]);
+
+                // A recovered checkout holds stock exactly like a fresh order.
+                if ($variant) {
+                    $product = Product::with('category:id,track_inventory')->find($item['id']);
+
+                    if ($product && $product->tracksInventory()) {
+                        $this->inventory->reserve($orderItem, $request->user()?->id);
+                    }
+                }
             }
 
             $checkout->update([

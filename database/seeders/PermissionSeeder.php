@@ -73,6 +73,16 @@ class PermissionSeeder extends Seeder
             'view settings',
             'edit settings',
 
+            // Inventory
+            'manage inventory',
+            'view product variants',
+            'create product variants',
+            'edit product variants',
+            'delete product variants',
+
+            // Order status
+            'order_status',
+
             // Dashboard
             'view dashboard',
             'view dashboard summary'
@@ -119,6 +129,8 @@ class PermissionSeeder extends Seeder
             'view customer details',
             'view customers',
             'edit customers',
+            'manage inventory',
+            'order_status',
         ]);
 
         // ✅ User role has no admin permissions

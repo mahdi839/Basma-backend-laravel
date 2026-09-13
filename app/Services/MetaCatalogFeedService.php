@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -15,6 +16,7 @@ class MetaCatalogFeedService
         'title',
         'description',
         'availability',
+        'inventory',
         'condition',
         'price',
         'sale_price',
@@ -69,8 +71,11 @@ class MetaCatalogFeedService
     /**
      * Convert one existing product into one Meta catalog item.
      *
-     * Color-size variants are intentionally not expanded here. The current
-     * database does not yet track inventory for exact combinations.
+     * Colour-size variants are deliberately still collapsed into a single row.
+     * Splitting them would change every item id in the live catalog, which would
+     * break the Pixel content_ids already matching on products.id and force the
+     * existing ad sets back into learning. Availability and inventory are now
+     * real numbers, which is the part that actually stops selling air.
      */
     public function productRow(Product $product): ?array
     {
@@ -97,11 +102,15 @@ class MetaCatalogFeedService
             ))
             ->values();
 
+        $tracked = (bool) $product->track_inventory;
+        $available = (int) ($product->variants_available ?? 0);
+
         return [
             (string) $product->id,
             $this->plainText($product->title),
             $this->description($product),
-            $this->availability($product->status),
+            $this->availability($product, $tracked, $available),
+            $tracked ? (string) max(0, $available) : '',
             'new',
             $this->formatPrice($regularPrice),
             $salePrice !== null ? $this->formatPrice($salePrice) : '',
@@ -124,7 +133,16 @@ class MetaCatalogFeedService
                 'price',
                 'discount',
                 'status',
+                'track_inventory',
+                'preorder_mode',
             ])
+            // Sellable units across the whole variant matrix, in one subquery.
+            ->selectSub(
+                ProductVariant::selectRaw('COALESCE(SUM(GREATEST(stock - reserved, 0)), 0)')
+                    ->whereColumn('product_variants.product_id', 'products.id')
+                    ->where('is_active', true),
+                'variants_available'
+            )
             ->with([
                 'images:id,product_id,image,position',
                 'sizes:id,size',
@@ -143,10 +161,21 @@ class MetaCatalogFeedService
         return $this->plainText((string) $description);
     }
 
-    private function availability(?string $status): string
+    /**
+     * Real stock wins over the manual status flag, but only for products that
+     * actually track inventory. Everything else keeps its existing behaviour.
+     */
+    private function availability(Product $product, bool $tracked, int $available): string
     {
-        return match ($status) {
-            'sold' => 'out of stock',
+        if ($product->status === 'sold') {
+            return 'out of stock';
+        }
+
+        if ($tracked && $available <= 0) {
+            return $product->allowsPreorder() ? 'preorder' : 'out of stock';
+        }
+
+        return match ($product->status) {
             'prebook' => 'preorder',
             default => 'in stock',
         };
