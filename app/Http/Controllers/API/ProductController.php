@@ -65,8 +65,11 @@ class ProductController extends Controller
                     }
                 });
             })
-            ->when($colorNames !== [], function ($q) use ($colorNames, $inStockOnly) {
-                $originals = $this->originalColorNames($colorNames);
+            ->when($colorNames !== [], function ($q) use ($colorNames, $inStockOnly, $slug) {
+                $scopeIds = $slug
+                    ? Product::whereHas('category', fn ($c) => $c->where('slug', $slug))->pluck('id')
+                    : null;
+                $originals = $this->originalColorNames($colorNames, $scopeIds);
                 $q->whereHas('variants', function ($v) use ($originals, $inStockOnly) {
                     $v->where('is_active', true)
                         ->whereHas('color', fn ($c) => $c->whereIn('name', $originals));
@@ -111,12 +114,15 @@ class ProductController extends Controller
             ->whereIn('status', ['in-stock', 'prebook'])
             ->pluck('id');
 
-        $variants = ProductVariant::with(['color:id,name,code,image', 'size:id,size'])
+        $inStockVariants = ProductVariant::with(['color:id,name,code,image', 'size:id,size'])
             ->whereIn('product_id', $productIds)
             ->where('is_active', true)
+            ->whereRaw('(stock - reserved) > 0')
             ->get();
 
-        $sizes = $variants
+        // Only sizes that currently have stock on this category's products —
+        // never empty matrix rows or sold-out sizes.
+        $sizes = $inStockVariants
             ->filter(fn ($v) => $v->size)
             ->groupBy('size_id')
             ->map(fn ($group) => [
@@ -124,28 +130,27 @@ class ProductController extends Controller
                 'size' => $group->first()->size->size,
                 'available' => (int) $group->sum(fn ($v) => max(0, $v->available)),
             ])
+            ->filter(fn ($size) => $size['available'] > 0)
             ->sortBy('id')
             ->values();
 
-        $colors = $variants
+        // Only colours that actually appear on this category's in-stock products —
+        // never the site-wide palette, and never a 0-stock matrix row.
+        $colors = $inStockVariants
             ->filter(fn ($v) => $v->color && trim((string) $v->color->name) !== '')
             ->groupBy(fn ($v) => ColorName::canonical($v->color->name))
             ->map(function ($group, $canonical) {
                 $first = $group->first()->color;
-                $productsInStock = $group
-                    ->filter(fn ($v) => $v->available > 0)
-                    ->pluck('product_id')
-                    ->unique()
-                    ->count();
+                $productsInStock = $group->pluck('product_id')->unique()->count();
 
                 return [
                     'name' => $canonical,
                     'code' => ColorName::hex($canonical, $first->code),
-                    // Shop-style swatch: a colour chip, not a photo of one shoe.
                     'image' => null,
                     'available' => $productsInStock,
                 ];
             })
+            ->filter(fn ($color) => $color['available'] > 0)
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
@@ -232,13 +237,17 @@ class ProductController extends Controller
      * A shop filter sends "Black"; products store "black", "Black", "0666 Black 8cm".
      * Expand the canonical label back to every original name so the query still hits.
      */
-    private function originalColorNames(array $canonicals): array
+    private function originalColorNames(array $canonicals, $productIds = null): array
     {
-        $stored = ProductColor::query()
+        $query = ProductColor::query()
             ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->distinct()
-            ->pluck('name');
+            ->where('name', '!=', '');
+
+        if ($productIds !== null) {
+            $query->whereIn('product_id', $productIds);
+        }
+
+        $stored = $query->distinct()->pluck('name');
 
         $originals = [];
 
