@@ -5,10 +5,12 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductColor;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\Size;
 use App\Services\InventoryService;
+use App\Support\ColorName;
 use App\Traits\ClearsHomeCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -64,9 +66,10 @@ class ProductController extends Controller
                 });
             })
             ->when($colorNames !== [], function ($q) use ($colorNames, $inStockOnly) {
-                $q->whereHas('variants', function ($v) use ($colorNames, $inStockOnly) {
+                $originals = $this->originalColorNames($colorNames);
+                $q->whereHas('variants', function ($v) use ($originals, $inStockOnly) {
                     $v->where('is_active', true)
-                        ->whereHas('color', fn ($c) => $c->whereIn('name', $colorNames));
+                        ->whereHas('color', fn ($c) => $c->whereIn('name', $originals));
                     if ($inStockOnly) {
                         $v->whereRaw('(stock - reserved) > 0');
                     }
@@ -125,15 +128,25 @@ class ProductController extends Controller
             ->values();
 
         $colors = $variants
-            ->filter(fn ($v) => $v->color && $v->color->name)
-            ->groupBy(fn ($v) => $v->color->name)
-            ->map(fn ($group, $name) => [
-                'name' => $name,
-                'code' => $group->first()->color->code,
-                'image' => $group->first()->color->image,
-                'available' => (int) $group->sum(fn ($v) => max(0, $v->available)),
-            ])
-            ->sortBy('name')
+            ->filter(fn ($v) => $v->color && trim((string) $v->color->name) !== '')
+            ->groupBy(fn ($v) => ColorName::canonical($v->color->name))
+            ->map(function ($group, $canonical) {
+                $first = $group->first()->color;
+                $productsInStock = $group
+                    ->filter(fn ($v) => $v->available > 0)
+                    ->pluck('product_id')
+                    ->unique()
+                    ->count();
+
+                return [
+                    'name' => $canonical,
+                    'code' => ColorName::hex($canonical, $first->code),
+                    // Shop-style swatch: a colour chip, not a photo of one shoe.
+                    'image' => null,
+                    'available' => $productsInStock,
+                ];
+            })
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
         return response()->json([
@@ -213,6 +226,31 @@ class ProductController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * A shop filter sends "Black"; products store "black", "Black", "0666 Black 8cm".
+     * Expand the canonical label back to every original name so the query still hits.
+     */
+    private function originalColorNames(array $canonicals): array
+    {
+        $stored = ProductColor::query()
+            ->whereNotNull('name')
+            ->where('name', '!=', '')
+            ->distinct()
+            ->pluck('name');
+
+        $originals = [];
+
+        foreach ($canonicals as $canonical) {
+            $originals = array_merge(
+                $originals,
+                ColorName::matchingOriginals($stored, $canonical),
+                [$canonical]
+            );
+        }
+
+        return array_values(array_unique($originals));
     }
 
     /**

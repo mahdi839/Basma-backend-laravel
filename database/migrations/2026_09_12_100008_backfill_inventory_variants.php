@@ -3,6 +3,8 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
+require_once __DIR__.'/helpers/ensure_product_variants_matrix.php';
+
 /**
  * Generates one product_variants row per colour x size combination for every
  * existing product.
@@ -19,6 +21,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // 100005 can record as "ran" while leaving the old EAV table in place
+        // (it used to return early if product_variants already existed). Repair
+        // that here so this backfill never queries a missing variant_key.
+        eyara_ensure_product_variants_matrix();
+
         DB::table('products')->select('id')->orderBy('id')->chunk(100, function ($products) {
             foreach ($products as $product) {
                 $this->backfillProduct((int) $product->id);
@@ -49,12 +56,17 @@ return new class extends Migration
 
         $hasColors = $colors->isNotEmpty();
         $rows = [];
+        $queued = [];
         $position = 0;
 
         foreach ($colorIds as $colorId) {
             foreach ($sizeRows as $sizeRow) {
                 $sizeId = $sizeRow->size_id ?? null;
-                $variantKey = ($colorId ?? 0).'-'.($sizeId ?? 0);
+                $variantKey = ((int) ($colorId ?? 0)).'-'.((int) ($sizeId ?? 0));
+
+                if (isset($queued[$variantKey])) {
+                    continue;
+                }
 
                 $exists = DB::table('product_variants')
                     ->where('product_id', $productId)
@@ -62,6 +74,7 @@ return new class extends Migration
                     ->exists();
 
                 if ($exists) {
+                    $queued[$variantKey] = true;
                     continue;
                 }
 
@@ -89,6 +102,7 @@ return new class extends Migration
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
+                $queued[$variantKey] = true;
             }
         }
 
