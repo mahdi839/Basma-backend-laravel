@@ -38,6 +38,10 @@ class ProductController extends Controller
         $sizeIds = $this->asIdArray($request->query('sizes'));
         $colorNames = $this->asStringArray($request->query('colors'));
         $inStockOnly = $request->boolean('in_stock_only');
+        $stockCategory = $slug !== ''
+            && Category::where('slug', $slug)->where('track_inventory', true)->exists();
+        $stockFilterActive = $stockCategory && ($sizeIds !== [] || $colorNames !== []);
+        $requireInStock = $stockFilterActive || $inStockOnly;
 
         $allProducts = Product::with(['images', 'sizes', 'faqs', 'category', 'specifications'])
             ->when($slug, function ($q) use ($slug) {
@@ -57,30 +61,31 @@ class ProductController extends Controller
             })
             // Each filter matches against the variant matrix, so "Maroon + M"
             // only returns products that actually have that combination sellable.
-            ->when($sizeIds !== [], function ($q) use ($sizeIds, $inStockOnly) {
-                $q->whereHas('variants', function ($v) use ($sizeIds, $inStockOnly) {
-                    $v->whereIn('size_id', $sizeIds)->where('is_active', true);
-                    if ($inStockOnly) {
-                        $v->whereRaw('(stock - reserved) > 0');
+            ->when($sizeIds !== [] || $colorNames !== [], function ($q) use ($sizeIds, $colorNames, $requireInStock, $slug) {
+                $originals = [];
+                if ($colorNames !== []) {
+                    $scopeIds = $slug
+                        ? Product::whereHas('category', fn ($c) => $c->where('slug', $slug))->pluck('id')
+                        : null;
+                    $originals = $this->originalColorNames($colorNames, $scopeIds);
+                }
+
+                $q->whereHas('variants', function ($v) use ($sizeIds, $originals, $requireInStock) {
+                    $v->where('is_active', true);
+                    if ($sizeIds !== []) {
+                        $v->whereIn('size_id', $sizeIds);
                     }
-                });
-            })
-            ->when($colorNames !== [], function ($q) use ($colorNames, $inStockOnly, $slug) {
-                $scopeIds = $slug
-                    ? Product::whereHas('category', fn ($c) => $c->where('slug', $slug))->pluck('id')
-                    : null;
-                $originals = $this->originalColorNames($colorNames, $scopeIds);
-                $q->whereHas('variants', function ($v) use ($originals, $inStockOnly) {
-                    $v->where('is_active', true)
-                        ->whereHas('color', fn ($c) => $c->whereIn('name', $originals));
-                    if ($inStockOnly) {
-                        $v->whereRaw('(stock - reserved) > 0');
+                    if ($originals !== []) {
+                        $v->whereHas('color', fn ($c) => $c->whereIn('name', $originals));
+                    }
+                    if ($requireInStock) {
+                        $v->inStock();
                     }
                 });
             })
             ->when($inStockOnly && $sizeIds === [] && $colorNames === [], function ($q) {
                 $q->whereHas('variants', function ($v) {
-                    $v->where('is_active', true)->whereRaw('(stock - reserved) > 0');
+                    $v->where('is_active', true)->inStock();
                 });
             })
             ->latest()
