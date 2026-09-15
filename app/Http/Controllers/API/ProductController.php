@@ -110,19 +110,38 @@ class ProductController extends Controller
     {
         $category = Category::where('slug', $slug)->firstOrFail();
 
-        $productIds = Product::whereHas('category', fn ($q) => $q->where('categories.id', $category->id))
-            ->whereIn('status', ['in-stock', 'prebook'])
-            ->pluck('id');
+        $payload = [
+            'category' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'track_inventory' => (bool) $category->track_inventory,
+            ],
+            'sizes' => [],
+            'colors' => [],
+        ];
 
-        $inStockVariants = ProductVariant::with(['color:id,name,code,image', 'size:id,size'])
+        // This endpoint is only for a stock-tracked category page. Never fall
+        // back to the global sizes table or the site-wide colour list.
+        if (! $category->track_inventory) {
+            return response()->json(['message' => 'success', 'data' => $payload]);
+        }
+
+        $productIds = $category->products()
+            ->whereIn('products.status', ['in-stock', 'prebook'])
+            ->pluck('products.id');
+
+        if ($productIds->isEmpty()) {
+            return response()->json(['message' => 'success', 'data' => $payload]);
+        }
+
+        $stocked = ProductVariant::with(['color:id,name,code', 'size:id,size'])
             ->whereIn('product_id', $productIds)
             ->where('is_active', true)
-            ->whereRaw('(stock - reserved) > 0')
+            ->inStock()
             ->get();
 
-        // Only sizes that currently have stock on this category's products —
-        // never empty matrix rows or sold-out sizes.
-        $sizes = $inStockVariants
+        $payload['sizes'] = $stocked
             ->filter(fn ($v) => $v->size)
             ->groupBy('size_id')
             ->map(fn ($group) => [
@@ -134,39 +153,24 @@ class ProductController extends Controller
             ->sortBy('id')
             ->values();
 
-        // Only colours that actually appear on this category's in-stock products —
-        // never the site-wide palette, and never a 0-stock matrix row.
-        $colors = $inStockVariants
+        $payload['colors'] = $stocked
             ->filter(fn ($v) => $v->color && trim((string) $v->color->name) !== '')
             ->groupBy(fn ($v) => ColorName::canonical($v->color->name))
             ->map(function ($group, $canonical) {
                 $first = $group->first()->color;
-                $productsInStock = $group->pluck('product_id')->unique()->count();
 
                 return [
                     'name' => $canonical,
                     'code' => ColorName::hex($canonical, $first->code),
                     'image' => null,
-                    'available' => $productsInStock,
+                    'available' => $group->pluck('product_id')->unique()->count(),
                 ];
             })
             ->filter(fn ($color) => $color['available'] > 0)
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
-        return response()->json([
-            'message' => 'success',
-            'data' => [
-                'category' => [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'slug' => $category->slug,
-                    'track_inventory' => (bool) $category->track_inventory,
-                ],
-                'sizes' => $sizes,
-                'colors' => $colors,
-            ],
-        ]);
+        return response()->json(['message' => 'success', 'data' => $payload]);
     }
 
     /**
