@@ -471,10 +471,12 @@ class ProductController extends Controller
         $payload = $product->toArray();
         $payload['inventory'] = $this->inventory->availabilityFor($product);
 
-        return response()->json([
-            'message' => 'success',
-            'data'    => $payload,
-        ], 200);
+        return response()
+            ->json([
+                'message' => 'success',
+                'data'    => $payload,
+            ], 200)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
     }
 
     /**
@@ -729,6 +731,7 @@ class ProductController extends Controller
     {
         Cache::forget("product:{$productId}");
         Cache::forget("product:detail:v2:{$productId}");
+        Cache::forget("product:detail:v3:{$productId}");
 
         // Clear all pages of related products cache
         $product = Product::with('category:id')->find($productId);
